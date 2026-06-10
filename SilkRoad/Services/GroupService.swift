@@ -223,6 +223,19 @@ class GroupService: ObservableObject {
             ])
     }
 
+    /// Updates only the status field of another member's document
+    /// (used by the caravan monitor, which evaluates members other than
+    /// the current user).
+    func updateMemberStatus(
+        groupId: String,
+        memberId: String,
+        status: DriverStatus
+    ) async throws {
+        try await db.collection("groups").document(groupId)
+            .collection("members").document(memberId)
+            .updateData(["status": status.rawValue])
+    }
+
     // MARK: - QR Code Generation
 
     func generateQRCode(for inviteCode: String) -> Data? {

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import MapKit
 import CoreLocation
 import FirebaseAuth
@@ -18,12 +19,33 @@ class NavigationViewModel: ObservableObject {
     let caravanMonitor: CaravanMonitorService
 
     private var monitorTimer: Timer?
+    private var cancellables: Set<AnyCancellable> = []
+
+    var isLeader: Bool {
+        guard let userId = Auth.auth().currentUser?.uid else { return false }
+        return groupService.activeGroup?.createdBy == userId
+    }
 
     init(groupService: GroupService, chatService: ChatService) {
         self.groupService = groupService
         self.chatService = chatService
         self.caravanMonitor = CaravanMonitorService(groupService: groupService, chatService: chatService)
         setupCallbacks()
+
+        // Forward nested service changes so views observing this view model update.
+        for serviceChange in [
+            navigationService.objectWillChange,
+            locationService.objectWillChange,
+            caravanMonitor.objectWillChange
+        ] {
+            serviceChange
+                .sink { [weak self] _ in self?.objectWillChange.send() }
+                .store(in: &cancellables)
+        }
+    }
+
+    deinit {
+        monitorTimer?.invalidate()
     }
 
     private func setupCallbacks() {
@@ -167,18 +189,62 @@ class NavigationViewModel: ObservableObject {
     }
 
     func stopNavigation() async {
-        guard let groupId = groupService.activeGroup?.id else { return }
-
         locationService.stopTracking()
         navigationService.stopNavigation()
         showNavigation = false
         stopCaravanMonitoring()
+
+        // Only the leader ends navigation for the whole group; a member
+        // stopping locally must not flip the shared flag for everyone.
+        guard isLeader, let groupId = groupService.activeGroup?.id else { return }
 
         do {
             try await groupService.stopNavigation(groupId: groupId)
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    /// Joins an in-progress group navigation as a non-leader member,
+    /// following the route the leader shared via Firestore.
+    func joinNavigation() async {
+        guard !showNavigation,
+              let group = groupService.activeGroup,
+              let lat = group.destinationLatitude,
+              let lng = group.destinationLongitude else { return }
+
+        let destination = CLLocationCoordinate2D(latitude: lat, longitude: lng)
+
+        do {
+            if let polyline = group.routePolyline, !polyline.isEmpty {
+                try await navigationService.setRouteFromPolyline(polyline, destination: destination)
+            } else if let location = locationService.currentLocation {
+                let route = try await navigationService.calculateRoute(
+                    from: location.coordinate,
+                    to: destination
+                )
+                navigationService.setRoute(route)
+            } else {
+                return
+            }
+
+            locationService.startTracking()
+            navigationService.startNavigation()
+            caravanMonitor.setRoute(coordinates: navigationService.routePolylineCoordinates)
+            showNavigation = true
+            // Note: only the leader runs the caravan monitor timer, so
+            // alerts aren't duplicated by every member.
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    /// Tears down navigation locally when the leader ends it for the group.
+    func endNavigationLocally() {
+        locationService.stopTracking()
+        navigationService.stopNavigation()
+        stopCaravanMonitoring()
+        showNavigation = false
     }
 
     private func reroute() async {

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var deepLinkRouter: DeepLinkRouter
     @StateObject private var groupViewModel = GroupViewModel()
     @State private var showCreateGroup = false
     @State private var showJoinGroup = false
@@ -34,7 +35,14 @@ struct HomeView: View {
                 CreateGroupView(groupViewModel: groupViewModel)
             }
             .sheet(isPresented: $showJoinGroup) {
-                JoinGroupView(groupViewModel: groupViewModel)
+                JoinGroupView(
+                    groupViewModel: groupViewModel,
+                    prefilledCode: deepLinkRouter.pendingInviteCode
+                )
+                .onDisappear { deepLinkRouter.pendingInviteCode = nil }
+            }
+            .onReceive(deepLinkRouter.$pendingInviteCode) { code in
+                if code != nil { showJoinGroup = true }
             }
             .navigationDestination(item: $selectedGroup) { group in
                 GroupDetailView(
@@ -185,8 +193,6 @@ struct GroupCardView: View {
     let group: Group
     let onTap: () -> Void
 
-    @State private var isPressed = false
-
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 16) {
@@ -242,7 +248,5 @@ struct GroupCardView: View {
             .glassCard()
         }
         .buttonStyle(.plain)
-        .scaleEffect(isPressed ? 0.97 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isPressed)
     }
 }

@@ -26,6 +26,12 @@
 				<string>com.googleusercontent.apps.dummy</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>silkroad</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
@@ -54,7 +60,6 @@
 	<array>
 		<string>location</string>
 		<string>remote-notification</string>
-		<string>audio</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

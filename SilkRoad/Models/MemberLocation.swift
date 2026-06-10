@@ -48,7 +48,9 @@ struct MemberLocation: Identifiable, Codable, Equatable {
     var longitude: Double
     var heading: Double
     var speed: Double
-    var lastUpdated: Date
+    // Server timestamps are null in latency-compensated local snapshots;
+    // a non-optional Date would fail to decode and drop the member row.
+    @ServerTimestamp var lastUpdated: Date?
     var status: DriverStatus
     var currentStepIndex: Int
 
@@ -73,7 +75,7 @@ struct MemberLocation: Identifiable, Codable, Equatable {
         longitude: Double = 0,
         heading: Double = 0,
         speed: Double = 0,
-        lastUpdated: Date = Date(),
+        lastUpdated: Date? = nil,
         status: DriverStatus = .idle,
         currentStepIndex: Int = 0
     ) {

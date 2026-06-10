@@ -30,6 +30,10 @@ class FileStorageService: ObservableObject {
 
         isUploading = true
         uploadProgress = 0
+        defer {
+            isUploading = false
+            uploadProgress = 0
+        }
 
         let fileId = UUID().uuidString
         let storagePath = "groups/\(groupId)/files/\(fileId)_\(fileName)"
@@ -74,9 +78,6 @@ class FileStorageService: ObservableObject {
         try db.collection("groups").document(groupId)
             .collection("files")
             .addDocument(from: file)
-
-        isUploading = false
-        uploadProgress = 0
     }
 
     // MARK: - Delete

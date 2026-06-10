@@ -64,13 +64,14 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - "com.googleusercontent.apps.dummy"
+          - CFBundleURLSchemes:
+              - "silkroad"
         UILaunchScreen: {}
         NSLocationWhenInUseUsageDescription: "Silk Road needs your location to navigate and share your position with your caravan."
         NSLocationAlwaysAndWhenInUseUsageDescription: "Silk Road needs background location access to keep tracking your position during navigation."
         UIBackgroundModes:
           - location
           - remote-notification
-          - audio
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
           UISceneConfigurations:

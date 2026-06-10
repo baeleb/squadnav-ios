@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import FirebaseAuth
 
 @MainActor
@@ -13,10 +14,20 @@ class GroupViewModel: ObservableObject {
     let chatService = ChatService()
     let fileService = FileStorageService()
 
+    private var cancellables: Set<AnyCancellable> = []
+
     init(groupService: GroupService? = nil) {
         let service = groupService ?? GroupService()
         self.groupService = service
         service.listenToUserGroups()
+
+        // Nested ObservableObjects don't propagate to views observing this
+        // view model, so forward their change notifications.
+        for serviceChange in [service.objectWillChange, chatService.objectWillChange, fileService.objectWillChange] {
+            serviceChange
+                .sink { [weak self] _ in self?.objectWillChange.send() }
+                .store(in: &cancellables)
+        }
     }
 
     // MARK: - Group Management

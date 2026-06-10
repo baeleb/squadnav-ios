@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import FirebaseAuth
 
 @MainActor
@@ -9,9 +10,16 @@ class ChatViewModel: ObservableObject {
     let chatService: ChatService
     let groupId: String
 
+    private var cancellables: Set<AnyCancellable> = []
+
     init(chatService: ChatService, groupId: String) {
         self.chatService = chatService
         self.groupId = groupId
+
+        // Forward nested service changes so views observing this view model update.
+        chatService.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
     }
 
     func sendMessage() async {

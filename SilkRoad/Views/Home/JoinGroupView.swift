@@ -2,10 +2,10 @@ import SwiftUI
 
 struct JoinGroupView: View {
     @ObservedObject var groupViewModel: GroupViewModel
+    var prefilledCode: String?
     @Environment(\.dismiss) var dismiss
 
     @State private var inviteCode = ""
-    @State private var showScanner = false
 
     var body: some View {
         ZStack {
@@ -117,32 +117,14 @@ struct JoinGroupView: View {
                 .opacity(inviteCode.count == 6 ? 1.0 : 0.5)
                 .padding(.horizontal, 20)
 
-                // Divider
-                HStack {
-                    Rectangle().fill(Color.white.opacity(0.15)).frame(height: 1)
-                    Text("or")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(AppTheme.textMuted)
-                    Rectangle().fill(Color.white.opacity(0.15)).frame(height: 1)
-                }
-
-                // QR Scanner button
-                Button {
-                    showScanner = true
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "qrcode.viewfinder")
-                            .font(.system(size: 22))
-                        Text("Scan QR Code")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    }
-                }
-                .buttonStyle(SecondaryButtonStyle())
-                .padding(.horizontal, 20)
-
                 Spacer()
             }
             .padding(.horizontal, 20)
+        }
+        .onAppear {
+            if let prefilledCode {
+                inviteCode = String(prefilledCode.prefix(6)).uppercased()
+            }
         }
     }
 }

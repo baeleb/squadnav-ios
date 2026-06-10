@@ -35,16 +35,11 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         )
         self.navigationManager = navManager
 
-        // Add navigation bar buttons
-        // setupMapButtons(mapTemplate: mapTemplate)
+        setupMapButtons(mapTemplate: mapTemplate)
 
-        let item = CPGridButton(titleVariants: ["Open Map"], image: UIImage(systemName: "map")!) { [weak self] _ in
-            guard let self = self, let mapTemplate = self.mapTemplate else { return }
-            self.interfaceController?.pushTemplate(mapTemplate, animated: true, completion: nil)
-        }
-        let gridTemplate = CPGridTemplate(title: "Silk Road", gridButtons: [item])
-
-        interfaceController.setRootTemplate(gridTemplate, animated: true, completion: nil)
+        // CPMapTemplate may only be used as the root template — pushing it
+        // onto another template raises an exception.
+        interfaceController.setRootTemplate(mapTemplate, animated: true, completion: nil)
     }
 
     func templateApplicationScene(

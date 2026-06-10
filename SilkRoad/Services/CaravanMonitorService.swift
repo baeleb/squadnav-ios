@@ -62,15 +62,11 @@ class CaravanMonitorService: ObservableObject {
                 let alertText = alertMessage(for: newStatus, memberName: member.displayName)
                 try? await chatService.sendSystemAlert(groupId: groupId, text: alertText)
 
-                // Update member status in Firestore
-                try? await groupService.updateMemberLocation(
+                // Update that member's status in Firestore
+                try? await groupService.updateMemberStatus(
                     groupId: groupId,
-                    latitude: member.latitude,
-                    longitude: member.longitude,
-                    heading: member.heading,
-                    speed: member.speed,
-                    status: newStatus,
-                    stepIndex: member.currentStepIndex
+                    memberId: memberId,
+                    status: newStatus
                 )
             }
         }

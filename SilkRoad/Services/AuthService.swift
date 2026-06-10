@@ -167,7 +167,7 @@ class FirebaseAuthService: ObservableObject, AuthServiceProtocol {
 
     func generateNonce() -> String {
         let length = 32
-        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._")
         var nonce = ""
         var remainingLength = length
 

@@ -4,6 +4,7 @@ struct GroupDetailView: View {
     let group: Group
     @ObservedObject var groupViewModel: GroupViewModel
     @StateObject private var navigationVM: NavigationViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: GroupTab = .map
     @State private var showDestinationSearch = false
 
@@ -69,6 +70,9 @@ struct GroupDetailView: View {
                     Button(role: .destructive) {
                         Task {
                             await groupViewModel.leaveGroup(group)
+                            if groupViewModel.error == nil {
+                                dismiss()
+                            }
                         }
                     } label: {
                         Label("Leave Group", systemImage: "rectangle.portrait.and.arrow.right")
@@ -94,6 +98,15 @@ struct GroupDetailView: View {
         }
         .onDisappear {
             groupViewModel.deselectGroup()
+        }
+        .onChange(of: groupViewModel.groupService.activeGroup?.isNavigating) { _, isNavigating in
+            // Keep non-leader members in sync with the leader's navigation state.
+            guard !groupViewModel.isLeader else { return }
+            if isNavigating == true {
+                Task { await navigationVM.joinNavigation() }
+            } else if navigationVM.showNavigation {
+                navigationVM.endNavigationLocally()
+            }
         }
     }
 

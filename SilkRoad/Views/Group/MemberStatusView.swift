@@ -82,8 +82,9 @@ struct MemberStatusView: View {
                         .foregroundColor(AppTheme.textMuted)
                     }
 
-                    // Last updated
-                    Text(member.lastUpdated.timeAgoDisplay)
+                    // Last updated (nil while a server timestamp is pending,
+                    // which means the update happened just now)
+                    Text((member.lastUpdated ?? Date()).timeAgoDisplay)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(AppTheme.textMuted)
                 }

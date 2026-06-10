@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import PhotosUI
 import SwiftUI
 import FirebaseAuth
@@ -11,9 +12,16 @@ class FilesViewModel: ObservableObject {
     let fileService: FileStorageService
     let groupId: String
 
+    private var cancellables: Set<AnyCancellable> = []
+
     init(fileService: FileStorageService, groupId: String) {
         self.fileService = fileService
         self.groupId = groupId
+
+        // Forward nested service changes so views observing this view model update.
+        fileService.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
     }
 
     func uploadSelectedPhotos() async {
