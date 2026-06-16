@@ -6,7 +6,7 @@
 
 **The caravan navigation app for groups who move as one.**
 
-*Coming soon to the App Store*
+*In active development*
 
 ---
 
