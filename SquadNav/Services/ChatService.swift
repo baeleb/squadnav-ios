@@ -34,7 +34,7 @@ class ChatService: ObservableObject {
     func sendSystemAlert(groupId: String, text: String) async throws {
         let message = Message(
             senderId: "system",
-            senderName: "Silk Road",
+            senderName: "SquadNav",
             text: text,
             type: .alert,
             timestamp: Date()
@@ -48,7 +48,7 @@ class ChatService: ObservableObject {
     func sendSystemMessage(groupId: String, text: String) async throws {
         let message = Message(
             senderId: "system",
-            senderName: "Silk Road",
+            senderName: "SquadNav",
             text: text,
             type: .system,
             timestamp: Date()

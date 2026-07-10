@@ -231,7 +231,7 @@ class GroupService: ObservableObject {
     func generateQRCode(for inviteCode: String) -> Data? {
         let context = CIContext()
         let filter = CIFilter.qrCodeGenerator()
-        let data = Data("silkroad://join/\(inviteCode)".utf8)
+        let data = Data("squadnav://join/\(inviteCode)".utf8)
         filter.setValue(data, forKey: "inputMessage")
         filter.setValue("H", forKey: "inputCorrectionLevel")
 

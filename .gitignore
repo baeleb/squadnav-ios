@@ -85,5 +85,5 @@ iOSInjectionProject/
 # XcodeGen
 #
 # We are generating the Xcode project, so let's ignore it
-SilkRoad.xcodeproj/
-SilkRoad.xcworkspace/
+SquadNav.xcodeproj/
+SquadNav.xcworkspace/

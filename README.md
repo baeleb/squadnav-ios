@@ -1,6 +1,6 @@
 <div align="center">
 
-# Silk Road
+# SquadNav
 
 ### Navigate together. Arrive together.
 
@@ -12,7 +12,7 @@
 
 </div>
 
-Silk Road keeps your entire group on the same road — real-time location sharing, synchronized turn-by-turn navigation, and instant alerts when anyone falls behind, stops, or goes off-route. Whether it's a road trip with friends, a convoy to a campsite, or a fleet moving in formation, Silk Road turns a scattered group into a caravan.
+SquadNav keeps your entire group on the same road — real-time location sharing, synchronized turn-by-turn navigation, and instant alerts when anyone falls behind, stops, or goes off-route. Whether it's a road trip with friends, a convoy to a campsite, or a fleet moving in formation, SquadNav turns a scattered group into a caravan.
 
 ---
 
@@ -22,16 +22,16 @@ Silk Road keeps your entire group on the same road — real-time location sharin
 Create a group in seconds and share the invite code. Everyone who joins sees each other on a live map from the moment they connect.
 
 **Synchronized Navigation**
-The group leader sets a destination. Silk Road calculates the route and distributes it to every member simultaneously — everyone follows the same path, no one guesses.
+The group leader sets a destination. SquadNav calculates the route and distributes it to every member simultaneously — everyone follows the same path, no one guesses.
 
 **Live Caravan Monitoring**
-Silk Road watches the caravan so you don't have to. Automatic alerts fire the moment anyone:
+SquadNav watches the caravan so you don't have to. Automatic alerts fire the moment anyone:
 - Leaves the route
 - Falls more than 2 km behind the group
 - Stops moving for over a minute
 
 **Group Chat**
-A shared in-group chat keeps communication flowing. System alerts from Silk Road appear inline, so your group stays informed without switching apps.
+A shared in-group chat keeps communication flowing. System alerts from SquadNav appear inline, so your group stays informed without switching apps.
 
 **File Sharing**
 Share documents, screenshots, and anything else with your group directly inside the app.
@@ -74,16 +74,16 @@ Full navigation UI on your car's display. Eyes on the road, hands on the wheel.
    xcodegen generate
    ```
 
-3. Add your `GoogleService-Info.plist` to `SilkRoad/Resources/`.
+3. Add your `GoogleService-Info.plist` to `SquadNav/Resources/`.
 
-4. Open `SilkRoad.xcodeproj`, set your development team, and run.
+4. Open `SquadNav.xcodeproj`, set your development team, and run.
 
 ---
 
 ## Architecture
 
 ```
-SilkRoad/
+SquadNav/
 ├── App/          # Entry point, root navigation
 ├── CarPlay/      # CarPlay scene delegate and map controller
 ├── Models/       # Data models (User, Group, Message, MemberLocation)
