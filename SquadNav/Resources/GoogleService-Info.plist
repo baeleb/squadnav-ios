@@ -13,9 +13,9 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.silkroad.SilkRoad</string>
+	<string>com.squadnav.SquadNav</string>
 	<key>PROJECT_ID</key>
-	<string>silkroad-dummy</string>
+	<string>squadnav-dummy</string>
 	<key>STORAGE_BUCKET</key>
 	<string>silkroad-dummy.appspot.com</string>
 	<key>IS_ADS_ENABLED</key>

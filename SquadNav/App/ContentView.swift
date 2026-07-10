@@ -53,7 +53,7 @@ struct LaunchView: View {
                         value: pulse
                     )
 
-                Text("Silk Road")
+                Text("SquadNav")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
             }

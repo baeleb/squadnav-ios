@@ -171,9 +171,9 @@ struct CreateGroupView: View {
 
             // Share button
             ShareLink(
-                item: "Join my Silk Road caravan! Code: \(group.inviteCode)",
+                item: "Join my SquadNav caravan! Code: \(group.inviteCode)",
                 subject: Text("Join my caravan"),
-                message: Text("Use invite code \(group.inviteCode) to join my caravan on Silk Road!")
+                message: Text("Use invite code \(group.inviteCode) to join my caravan on SquadNav!")
             ) {
                 HStack {
                     Image(systemName: "square.and.arrow.up")

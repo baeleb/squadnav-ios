@@ -3,7 +3,7 @@ import FirebaseCore
 import GoogleSignIn
 
 @main
-struct SilkRoadApp: App {
+struct SquadNavApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var deepLinkRouter = DeepLinkRouter()
@@ -26,14 +26,14 @@ struct SilkRoadApp: App {
 
 // MARK: - Deep Link Router
 
-/// Routes incoming custom-scheme URLs (e.g. silkroad://join/ABC123 from a
+/// Routes incoming custom-scheme URLs (e.g. squadnav://join/ABC123 from a
 /// scanned invite QR code) to the relevant UI.
 @MainActor
 final class DeepLinkRouter: ObservableObject {
     @Published var pendingInviteCode: String?
 
     func handle(_ url: URL) {
-        guard url.scheme?.lowercased() == "silkroad",
+        guard url.scheme?.lowercased() == "squadnav",
               url.host?.lowercased() == "join" else { return }
 
         let code = url.lastPathComponent

@@ -48,7 +48,7 @@ struct SignInView: View {
                         .scaleEffect(animateIn ? 1.0 : 0.5)
                         .opacity(animateIn ? 1.0 : 0)
 
-                        Text("Silk Road")
+                        Text("SquadNav")
                             .font(.system(size: 40, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
 
