@@ -51,6 +51,12 @@ struct MemberLocation: Identifiable, Codable, Equatable {
     // Server timestamps are null in latency-compensated local snapshots;
     // a non-optional Date would fail to decode and drop the member row.
     @ServerTimestamp var lastUpdated: Date?
+    // Server-set at member-doc creation (written explicitly as
+    // FieldValue.serverTimestamp() in createGroup/joinGroup). Used for
+    // leadership succession ("first person who joined").
+    // NOT @ServerTimestamp: that wrapper fails decode when the key is
+    // absent, silently dropping pre-field member docs from listeners.
+    var joinedAt: Date?
     var status: DriverStatus
     var currentStepIndex: Int
 
@@ -63,7 +69,8 @@ struct MemberLocation: Identifiable, Codable, Equatable {
     }
 
     var formattedSpeed: String {
-        let mph = speed * 2.237
+        // CLLocation.speed is -1 when invalid; never show negative mph.
+        let mph = max(0, speed) * 2.237
         return "\(Int(mph)) mph"
     }
 
@@ -76,6 +83,7 @@ struct MemberLocation: Identifiable, Codable, Equatable {
         heading: Double = 0,
         speed: Double = 0,
         lastUpdated: Date? = nil,
+        joinedAt: Date? = nil,
         status: DriverStatus = .idle,
         currentStepIndex: Int = 0
     ) {
@@ -87,6 +95,7 @@ struct MemberLocation: Identifiable, Codable, Equatable {
         self.heading = heading
         self.speed = speed
         self.lastUpdated = lastUpdated
+        self.joinedAt = joinedAt
         self.status = status
         self.currentStepIndex = currentStepIndex
     }

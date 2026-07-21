@@ -1,6 +1,7 @@
 import Foundation
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseStorage
 import CoreImage.CIFilterBuiltins
 
 @MainActor
@@ -41,14 +42,21 @@ class GroupService: ObservableObject {
 
         let docRef = try db.collection("groups").addDocument(from: group)
 
-        // Add creator as leader
-        let member = MemberLocation(
-            displayName: displayName,
-            role: "leader",
-            status: .idle,
-            currentStepIndex: 0
-        )
-        try docRef.collection("members").document(userId).setData(from: member)
+        // Add creator as leader. Dictionary write (not Codable): joinedAt
+        // needs an explicit serverTimestamp — a plain Date? model field
+        // would encode nil as "key omitted".
+        try await docRef.collection("members").document(userId).setData([
+            "displayName": displayName,
+            "role": "leader",
+            "latitude": 0.0,
+            "longitude": 0.0,
+            "heading": 0.0,
+            "speed": 0.0,
+            "lastUpdated": FieldValue.serverTimestamp(),
+            "joinedAt": FieldValue.serverTimestamp(),
+            "status": DriverStatus.idle.rawValue,
+            "currentStepIndex": 0
+        ])
 
         var createdGroup = group
         createdGroup.id = docRef.documentID
@@ -80,14 +88,19 @@ class GroupService: ObservableObject {
             throw GroupError.alreadyMember
         }
 
-        // Add as driver
-        let member = MemberLocation(
-            displayName: displayName,
-            role: "driver",
-            status: .idle,
-            currentStepIndex: 0
-        )
-        try doc.reference.collection("members").document(userId).setData(from: member)
+        // Add as driver (dictionary write — see createGroup for why)
+        try await doc.reference.collection("members").document(userId).setData([
+            "displayName": displayName,
+            "role": "driver",
+            "latitude": 0.0,
+            "longitude": 0.0,
+            "heading": 0.0,
+            "speed": 0.0,
+            "lastUpdated": FieldValue.serverTimestamp(),
+            "joinedAt": FieldValue.serverTimestamp(),
+            "status": DriverStatus.idle.rawValue,
+            "currentStepIndex": 0
+        ])
         try await doc.reference.updateData([
             "memberIds": FieldValue.arrayUnion([userId])
         ])
@@ -116,6 +129,95 @@ class GroupService: ObservableObject {
         }
     }
 
+    // MARK: - Delete Group (leader)
+
+    /// Deletes a group for everyone: Storage blobs, then members/messages/
+    /// files subcollection docs, then the group doc itself. Best-effort —
+    /// a failure partway leaves orphans that the cleanupGroups Cloud
+    /// Function sweeps on its next daily run.
+    func deleteGroup(groupId: String) async throws {
+        guard Auth.auth().currentUser?.uid != nil else {
+            throw GroupError.notAuthenticated
+        }
+
+        let groupRef = db.collection("groups").document(groupId)
+
+        // 1. Storage blobs (need file docs for URLs before deleting them)
+        let fileDocs = try await groupRef.collection("files").getDocuments()
+        for doc in fileDocs.documents {
+            if let file = try? doc.data(as: SharedFile.self) {
+                try? await Storage.storage().reference(forURL: file.url).delete()
+            }
+        }
+
+        // 2. Subcollections
+        for subcollection in ["members", "messages", "files"] {
+            let docs = try await groupRef.collection(subcollection).getDocuments()
+            for doc in docs.documents {
+                try await doc.reference.delete()
+            }
+        }
+
+        // 3. Group doc
+        try await groupRef.delete()
+    }
+
+    // MARK: - Leadership Succession
+
+    /// How long the leader's location may be stale before the group is
+    /// considered leaderless (involuntary leave: crash, connection loss).
+    static let leaderStalenessThreshold: TimeInterval = 180
+
+    /// Voluntary handoff: current leader promotes another member, then
+    /// typically leaves. Two writes (not atomic — acceptable: a crash
+    /// between them is covered by the involuntary-claim path).
+    func transferLeadership(groupId: String, newLeaderId: String) async throws {
+        guard Auth.auth().currentUser?.uid != nil else {
+            throw GroupError.notAuthenticated
+        }
+        let groupRef = db.collection("groups").document(groupId)
+        // Role write first: rules only let the CURRENT leader write
+        // `role` on another member's doc — after the createdBy write
+        // the caller is no longer leader and would be denied.
+        try await groupRef.collection("members").document(newLeaderId)
+            .updateData(["role": "leader"])
+        try await groupRef.updateData(["createdBy": newLeaderId])
+    }
+
+    /// Involuntary handoff: if the leader's member doc is missing (left
+    /// without transfer — e.g. older app version) or stale (crashed /
+    /// lost connection), the earliest-joined remaining member claims
+    /// leadership by writing createdBy to themselves.
+    func claimLeadershipIfNeeded(groupId: String) async {
+        guard let userId = Auth.auth().currentUser?.uid,
+              let group = activeGroup,
+              group.createdBy != userId else { return }
+
+        let leaderDoc = members.first { $0.id == group.createdBy }
+        let leaderIsGone: Bool
+        if let leaderDoc {
+            // Missing lastUpdated (old doc) counts as stale.
+            leaderIsGone = leaderDoc.lastUpdated
+                .map { Date().timeIntervalSince($0) > Self.leaderStalenessThreshold } ?? true
+        } else {
+            leaderIsGone = true
+        }
+        guard leaderIsGone else { return }
+
+        guard Self.firstJoinedMemberId(members: members) == userId else { return }
+
+        try? await transferLeadership(groupId: groupId, newLeaderId: userId)
+    }
+
+    /// Earliest-joined member wins; members without joinedAt (pre-field
+    /// docs) sort last so they never outrank timestamped members.
+    static func firstJoinedMemberId(members: [MemberLocation]) -> String? {
+        members
+            .filter { $0.id != nil }
+            .sorted { ($0.joinedAt ?? .distantFuture) < ($1.joinedAt ?? .distantFuture) }
+            .first?.id ?? nil
+    }
+
     // MARK: - Destination & Route
 
     func setDestination(
@@ -135,7 +237,10 @@ class GroupService: ObservableObject {
 
     func startNavigation(groupId: String) async throws {
         try await db.collection("groups").document(groupId).updateData([
-            "isNavigating": true
+            "isNavigating": true,
+            // Activity signal for the cleanupGroups Cloud Function
+            // (14-day nav-stale deletion).
+            "lastNavigatedAt": FieldValue.serverTimestamp()
         ])
     }
 
@@ -143,6 +248,36 @@ class GroupService: ObservableObject {
         try await db.collection("groups").document(groupId).updateData([
             "isNavigating": false
         ])
+    }
+
+    // MARK: - Presence Heartbeat
+
+    private var presenceTimer: Timer?
+
+    /// While a member has the group screen open, touch their member doc's
+    /// lastUpdated every 60s. This makes the leadership-staleness check
+    /// meaningful: without it, an online-but-not-navigating leader never
+    /// uploads and would look "gone" after a few minutes.
+    func startPresence(groupId: String) {
+        stopPresence()
+        writePresence(groupId: groupId)
+        presenceTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.writePresence(groupId: groupId) }
+        }
+    }
+
+    func stopPresence() {
+        presenceTimer?.invalidate()
+        presenceTimer = nil
+    }
+
+    private func writePresence(groupId: String) {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        Task {
+            try? await db.collection("groups").document(groupId)
+                .collection("members").document(userId)
+                .updateData(["lastUpdated": FieldValue.serverTimestamp()])
+        }
     }
 
     // MARK: - Real-Time Listeners
@@ -175,8 +310,11 @@ class GroupService: ObservableObject {
         membersListener?.remove()
         membersListener = db.collection("groups").document(groupId).collection("members")
             .addSnapshotListener { [weak self] snapshot, error in
-                guard let documents = snapshot?.documents else { return }
-                self?.members = documents.compactMap { try? $0.data(as: MemberLocation.self) }
+                guard let self, let documents = snapshot?.documents else { return }
+                self.members = documents.compactMap { try? $0.data(as: MemberLocation.self) }
+                // Every membership/location refresh is a chance to notice a
+                // leaderless group and claim it (involuntary succession).
+                Task { await self.claimLeadershipIfNeeded(groupId: groupId) }
             }
     }
 

@@ -10,6 +10,10 @@ class LocationService: NSObject, ObservableObject {
 
     private let locationManager = CLLocationManager()
     private var lastFirestoreUpdate: Date?
+    // Uploads to Firestore happen only while actively navigating; passive
+    // updates (started after permission grant) feed currentLocation for
+    // route calculation/search without touching Firestore.
+    private var uploadsEnabled = false
 
     // Throttle Firestore updates
     private let updateInterval: TimeInterval = 3.0
@@ -39,13 +43,22 @@ class LocationService: NSObject, ObservableObject {
     }
 
     func startTracking() {
+        uploadsEnabled = true
         locationManager.startUpdatingLocation()
         locationManager.startUpdatingHeading()
     }
 
     func stopTracking() {
+        uploadsEnabled = false
         locationManager.stopUpdatingLocation()
         locationManager.stopUpdatingHeading()
+    }
+
+    /// Starts location-only updates (no Firestore uploads, no heading) so
+    /// currentLocation is available for search/route calculation pre-navigation.
+    func startPassiveUpdates() {
+        guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else { return }
+        locationManager.startUpdatingLocation()
     }
 
     private func shouldUploadToFirestore(location: CLLocation) -> Bool {
@@ -71,7 +84,7 @@ extension LocationService: CLLocationManagerDelegate {
             self.currentLocation = location
             self.onLocationUpdate?(location)
 
-            if self.shouldUploadToFirestore(location: location) {
+            if self.uploadsEnabled && self.shouldUploadToFirestore(location: location) {
                 self.lastFirestoreUpdate = Date()
                 self.lastUploadedLocation = location
                 self.onShouldUploadToFirestore?(location)
@@ -88,6 +101,7 @@ extension LocationService: CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             self.authorizationStatus = manager.authorizationStatus
+            self.startPassiveUpdates()
         }
     }
 

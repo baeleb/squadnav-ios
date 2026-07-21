@@ -8,26 +8,22 @@ struct JoinGroupView: View {
     @State private var inviteCode = ""
 
     var body: some View {
-        ZStack {
-            AppTheme.backgroundGradient
-                .ignoresSafeArea()
-
-            VStack(spacing: 24) {
-                // Header
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(AppTheme.textMuted)
-                    }
-                    Spacer()
-                    Text("Join Caravan")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                    Spacer()
-                    Color.clear.frame(width: 28)
+        VStack(spacing: 24) {
+            // Header
+            HStack {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(AppTheme.textMuted)
                 }
-                .padding(.top, 20)
+                Spacer()
+                Text("Join Caravan")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                Spacer()
+                Color.clear.frame(width: 28)
+            }
+            .padding(.top, 20)
 
                 // Illustration
                 ZStack {
@@ -117,10 +113,11 @@ struct JoinGroupView: View {
                 .opacity(inviteCode.count == 6 ? 1.0 : 0.5)
                 .padding(.horizontal, 20)
 
-                Spacer()
-            }
-            .padding(.horizontal, 20)
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(AppTheme.backgroundGradient.ignoresSafeArea())
         .onAppear {
             if let prefilledCode {
                 inviteCode = String(prefilledCode.prefix(6)).uppercased()

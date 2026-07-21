@@ -1,0 +1,176 @@
+rules_version = '2';
+
+// SquadNav Firestore security rules (squadnav-dev).
+//
+// KNOWN HOLE (documented in CLAUDE.md): any signed-in user can read ANY
+// group doc (`allow get, list: if signedIn()` on /groups). This exists
+// because joinGroup() looks up groups by inviteCode BEFORE the user is a
+// member, and list queries can't be constrained per-doc by rules. The
+// planned fix is an invites collection + Cloud Function join, after which
+// group reads tighten to `uid in memberIds`.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function groupData(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)).data;
+    }
+
+    // memberIds is optional on pre-refactor group docs — default to [].
+    function memberIdsOf(data) {
+      return data.get('memberIds', []);
+    }
+
+    function isMember(groupId) {
+      return signedIn() && memberIdsOf(groupData(groupId)).hasAny([uid()]);
+    }
+
+    // ------------------------------------------------------------------
+    // users/{userId}
+    // ------------------------------------------------------------------
+    match /users/{userId} {
+      allow get, list: if signedIn();
+      allow create, update: if signedIn() && uid() == userId;
+      allow delete: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // groups/{groupId}
+    // ------------------------------------------------------------------
+    match /groups/{groupId} {
+
+      // Read: see KNOWN HOLE note at top of file.
+      allow get, list: if signedIn();
+
+      // Create: creator is the leader and the sole initial member.
+      allow create: if signedIn()
+        && request.resource.data.createdBy == uid()
+        && request.resource.data.memberIds == [uid()];
+
+      // Self-join: joinGroup() pairs a members/{uid} write with
+      // arrayUnion(memberIds). The only allowed non-member update is
+      // appending exactly yourself to memberIds (arrayUnion appends).
+      function joiningSelf() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+          && !memberIdsOf(resource.data).hasAny([uid()])
+          && request.resource.data.memberIds == memberIdsOf(resource.data).concat([uid()]);
+      }
+
+      // Self-leave: leaveGroup() pairs the member-doc delete with
+      // arrayRemove(memberIds). Only allowed change: removing exactly
+      // yourself, while currently a member.
+      function leavingSelf() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+          && memberIdsOf(resource.data).hasAny([uid()])
+          && request.resource.data.memberIds.toSet()
+               == memberIdsOf(resource.data).toSet().difference([uid()].toSet())
+          && request.resource.data.memberIds.size() == memberIdsOf(resource.data).size() - 1;
+      }
+
+      // Involuntary succession: a member may set createdBy to THEMSELVES
+      // (and nothing else) when the current leader's member doc is gone
+      // (left without transfer) or stale (>3 min without a location
+      // update = crash/connection loss; uploads run every ~3s while
+      // navigating). Client-side, only the earliest-joined member attempts
+      // this; the rule can't sort, but any member claiming is bounded by
+      // self-only + single-field + leader-absent.
+      function claimingStaleLeadership(groupId) {
+        let leaderDocPath = /databases/$(database)/documents/groups/$(groupId)/members/$(resource.data.createdBy);
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdBy'])
+          && request.resource.data.createdBy == uid()
+          && memberIdsOf(resource.data).hasAny([uid()])
+          && (
+            !exists(leaderDocPath)
+            || get(leaderDocPath).data.get('lastUpdated', request.time)
+                 < request.time - duration.value(180, 's')
+          );
+      }
+
+      // Update: leader may change anything (destination, route, nav
+      // state, name); non-leaders may join/leave themselves or claim
+      // stale leadership.
+      allow update: if signedIn() && (
+        resource.data.createdBy == uid()
+        || joiningSelf()
+        || leavingSelf()
+        || claimingStaleLeadership(groupId)
+      );
+
+      // Delete: leader, or last-member-out cleanup. leaveGroup() removes
+      // the leaver from memberIds BEFORE deleting the group, so by delete
+      // time the array is already empty.
+      allow delete: if signedIn() && (
+        resource.data.createdBy == uid()
+        || memberIdsOf(resource.data).size() == 0
+      );
+
+      // ----------------------------------------------------------------
+      // groups/{groupId}/members/{memberId}  (MemberLocation)
+      // ----------------------------------------------------------------
+      match /members/{memberId} {
+        // Single-doc get is also allowed for your own doc PRE-membership:
+        // joinGroup() does an already-a-member existence check before
+        // writing, which would otherwise be denied for non-members.
+        allow get: if isMember(groupId) || (signedIn() && uid() == memberId);
+        allow list: if isMember(groupId);
+
+        // Members create only their own doc (joinGroup).
+        allow create: if signedIn() && uid() == memberId;
+
+        // Own doc: any fields (location pipeline writes lat/lng/heading/
+        // speed/lastUpdated/status/currentStepIndex).
+        // Leader: may write ONLY `status` (CaravanMonitorService) or
+        // `role` (leadership transfer promotes successor to "leader")
+        // on other members' docs.
+        allow update: if signedIn() && (
+          uid() == memberId
+          || (groupData(groupId).createdBy == uid()
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'role']))
+        );
+
+        // Own doc (leave), or the leader (group deletion cleanup).
+        allow delete: if signedIn() && (
+          uid() == memberId || groupData(groupId).createdBy == uid()
+        );
+      }
+
+      // ----------------------------------------------------------------
+      // groups/{groupId}/messages  (Message)
+      // ----------------------------------------------------------------
+      match /messages/{messageId} {
+        allow get, list: if isMember(groupId);
+        // senderId 'system' is used by navigation/caravan alerts and is
+        // sent from a member's device — spoofable by any member.
+        // Acceptable for dev; tighten when alerts move server-side.
+        allow create: if isMember(groupId)
+          && (request.resource.data.senderId == uid()
+              || request.resource.data.senderId == 'system');
+        allow update: if false;
+        // Leader may delete (group deletion cleanup).
+        allow delete: if signedIn() && groupData(groupId).createdBy == uid();
+      }
+
+      // ----------------------------------------------------------------
+      // groups/{groupId}/files  (SharedFile metadata)
+      // ----------------------------------------------------------------
+      match /files/{fileId} {
+        allow get, list: if isMember(groupId);
+        allow create: if isMember(groupId)
+          && request.resource.data.uploadedBy == uid();
+        // Uploader or group leader may delete.
+        allow delete: if isMember(groupId) && (
+          resource.data.uploadedBy == uid()
+          || groupData(groupId).createdBy == uid()
+        );
+        allow update: if false;
+      }
+    }
+  }
+}

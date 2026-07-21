@@ -3,6 +3,7 @@ import PhotosUI
 
 struct FilesView: View {
     @StateObject private var viewModel: FilesViewModel
+    @StateObject private var previewLoader = FilePreviewLoader()
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var showDocumentPicker = false
 
@@ -32,6 +33,65 @@ struct FilesView: View {
             if viewModel.fileService.isUploading {
                 uploadProgressOverlay
             }
+        }
+        // Document picker (was previously never presented — dead button)
+        .fileImporter(
+            isPresented: $showDocumentPicker,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                let didAccess = url.startAccessingSecurityScopedResource()
+                defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
+                do {
+                    let data = try Data(contentsOf: url)
+                    let fileName = url.lastPathComponent
+                    let mimeType = FileStorageService.mimeType(for: url)
+                    Task { await viewModel.uploadFileData(data, fileName: fileName, mimeType: mimeType) }
+                } catch {
+                    viewModel.error = "Couldn't read file: \(error.localizedDescription)"
+                }
+            case .failure(let error):
+                viewModel.error = error.localizedDescription
+            }
+        }
+        // Upload errors were previously swallowed into an unread property.
+        .alert(
+            "File Error",
+            isPresented: Binding(
+                get: { viewModel.error != nil },
+                set: { if !$0 { viewModel.error = nil } }
+            )
+        ) {
+            Button("OK") { viewModel.error = nil }
+        } message: {
+            Text(viewModel.error ?? "")
+        }
+        // Preview sheet (photos, PDFs, anything QuickLook supports)
+        .sheet(
+            isPresented: Binding(
+                get: { previewLoader.localURL != nil },
+                set: { if !$0 { previewLoader.clear() } }
+            )
+        ) {
+            if let url = previewLoader.localURL {
+                FilePreviewView(fileURL: url)
+                    .ignoresSafeArea()
+            }
+        }
+        // Preview download failures
+        .alert(
+            "Preview Error",
+            isPresented: Binding(
+                get: { previewLoader.error != nil },
+                set: { if !$0 { previewLoader.clear() } }
+            )
+        ) {
+            Button("OK") { previewLoader.clear() }
+        } message: {
+            Text(previewLoader.error ?? "")
         }
     }
 
@@ -105,6 +165,7 @@ struct FilesView: View {
 
     private func fileRow(file: SharedFile) -> some View {
         HStack(spacing: 14) {
+            // Tap-to-preview target wraps icon + info (not delete button)
             // File icon
             ZStack {
                 RoundedRectangle(cornerRadius: 10)
@@ -136,6 +197,12 @@ struct FilesView: View {
 
             Spacer()
 
+            if previewLoader.isLoading {
+                ProgressView()
+                    .tint(AppTheme.primary)
+                    .scaleEffect(0.8)
+            }
+
             // Delete button
             if viewModel.canDeleteFile(file) {
                 Button {
@@ -156,6 +223,10 @@ struct FilesView: View {
                         .stroke(Color.white.opacity(0.05), lineWidth: 1)
                 )
         )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            Task { await previewLoader.load(file: file) }
+        }
     }
 
     // MARK: - Empty State

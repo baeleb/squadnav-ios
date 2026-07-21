@@ -23,7 +23,7 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.dummy</string>
+				<string>com.googleusercontent.apps.197592495387-d3j3v3cv0r6cj77b9sq90dcer1mvkpg1</string>
 			</array>
 		</dict>
 		<dict>
@@ -35,6 +35,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>GIDClientID</key>
+	<string>197592495387-d3j3v3cv0r6cj77b9sq90dcer1mvkpg1.apps.googleusercontent.com</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>SquadNav needs background location access to keep tracking your position during navigation.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

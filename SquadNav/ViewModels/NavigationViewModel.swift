@@ -18,7 +18,8 @@ class NavigationViewModel: ObservableObject {
     let chatService: ChatService
     let caravanMonitor: CaravanMonitorService
 
-    private var monitorTimer: Timer?
+    // Internal (not private) purely as a test seam for SquadNavTests.
+    var monitorTimer: Timer?
     private var cancellables: Set<AnyCancellable> = []
 
     var isLeader: Bool {
@@ -265,7 +266,8 @@ class NavigationViewModel: ObservableObject {
 
     // MARK: - Caravan Monitoring
 
-    private func startCaravanMonitoring() {
+    // Internal (not private) purely as a test seam for SquadNavTests.
+    func startCaravanMonitoring() {
         monitorTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self,

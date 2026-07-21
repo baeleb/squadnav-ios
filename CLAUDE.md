@@ -8,18 +8,19 @@ SquadNav is an iOS 17+ SwiftUI app (Swift 5.9, iPhone-only, dark mode forced) fo
 
 GitHub repo: `baeleb/squadnav-ios`, default branch `main`.
 
-## Current state (as of 2026-06-09 — update or delete this section when stale)
+## Current state (as of 2026-07-21 — update or delete this section when stale)
 
-Branch `membership-and-caravan-fixes` is pushed with PR #2 open against `main` (https://github.com/baeleb/squadnav-ios/pull/2), containing two commits:
+Live Firebase project **`squadnav-dev`** is wired up: real `GoogleService-Info.plist` (gitignored, see below), Email/Google/Apple auth enabled, Firestore + Storage created (`us-central1`), and security rules deployed from this repo (`firestore.rules`, `storage.rules`, `firebase.json`, `.firebaserc`).
 
-1. Invite deep links (`squadnav://join/CODE` + `DeepLinkRouter`), CarPlay root-template fix, `@ServerTimestamp` decode fix on `MemberLocation.lastUpdated`, view-model `objectWillChange` forwarding, leader-only navigation control, caravan monitor status-write fix, and small fixes (upload-state `defer`, nonce charset, removed unused `audio` background mode).
-2. Membership-model refactor: `memberIds: [String]` array on each group doc, maintained with `arrayUnion`/`arrayRemove`; `listenToUserGroups()` is now a single `arrayContains` query (previously it scanned the entire `groups` collection with an N+1 membership check per doc).
+A `SquadNavTests` XCTest target now exists (standalone — compiles app sources directly, no app host, no live Firebase). Its 22 tests document 13 verified bugs found in a 2026-07 audit (12 intentionally failing tests = bug evidence, 7 passing controls; 2 crash-documenting tests skipped, 1 untestable skipped). Worst: `NavigationService.estimatedPolylineIndex` never resets (infinite off-route loop + possible range crash on shorter routes), member reroute dead-ends on nil `selectedDestination`, `RouteEncoder.decode` crashes on malformed polylines, monitor evaluates members at default (0,0)/stale locations as off-route, invalid `CLLocation.speed` (-1) yields false "stopped" and "-2 mph". None of these are fixed yet. Access-level test seams (private→internal, commented) exist in `NavigationService`, `CaravanMonitorService`, `NavigationViewModel`.
 
 Outstanding follow-ups (none started):
 
-- **Backfill `memberIds`**: groups created before the refactor have no `memberIds` field and will not appear in anyone's group list until a one-time script/Cloud Function copies each group's `members` subcollection doc IDs into the array.
-- **Firestore security rules** are not in this repo and presumably still allow world-readable groups. The refactor unlocks `allow read: if request.auth.uid in resource.data.memberIds` — but `joinGroup` still needs to query by `inviteCode` pre-membership and to `arrayUnion` itself in, so rules must permit those paths.
+- **Fix the verified audit bugs** (see test suite for the failing-test evidence).
+- **Backfill `memberIds`**: groups created before the refactor have no `memberIds` field and will not appear in anyone's group list until a one-time script/Cloud Function copies each group's `members` subcollection doc IDs into the array. (Rules also default missing `memberIds` to `[]`, so pre-backfill groups are unreadable by members.)
+- **Groups are readable by ANY signed-in user** (`allow get, list: if signedIn()` in `firestore.rules`) because `joinGroup` queries by `inviteCode` pre-membership. Fix = invites collection + Cloud Function join, then tighten reads to `uid in memberIds`. Also note: 6-char invite codes are guessable.
 - **CarPlay navigation is not wired up** (see CarPlay section below).
+- **Deferred**: App Check, `squadnav-prod` project, Android app registration, Java install for local rules emulator testing.
 
 ## Build commands
 
@@ -36,7 +37,13 @@ xcodebuild -project SquadNav.xcodeproj -scheme SquadNav \
   -destination 'generic/platform=iOS Simulator' build
 ```
 
-This build is the only verification available (no tests). `GoogleService-Info.plist` in the repo is a dummy placeholder (as is the `com.googleusercontent.apps.dummy` URL scheme in `project.yml`); Firebase/Google auth won't function until real ones are supplied. The CarPlay entitlement (`com.apple.developer.carplay-maps`) requires Apple approval to run on real hardware; the CarPlay simulator works without it.
+Tests: `xcodebuild -project SquadNav.xcodeproj -scheme SquadNavTests -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test` (many failures are intentional bug documentation — see "Current state").
+
+**`GoogleService-Info.plist` is gitignored** (real per-environment config). New devs: copy `SquadNav/Resources/GoogleService-Info.plist.example` → `SquadNav/Resources/GoogleService-Info.plist` with real values from the Firebase console (project `squadnav-dev`), update the `com.googleusercontent.apps.*` URL scheme in `project.yml` to the plist's `REVERSED_CLIENT_ID`, then `xcodegen generate`.
+
+Security rules live in this repo (`firestore.rules`, `storage.rules`); deploy with `firebase deploy --only firestore:rules,storage` (requires `firebase login`, project alias in `.firebaserc`). Rules changes must go through the repo + deploy, not console edits.
+
+The CarPlay entitlement (`com.apple.developer.carplay-maps`) requires Apple approval to run on real hardware; the CarPlay simulator works without it.
 
 ## Repository layout
 
@@ -141,8 +148,8 @@ The app uses the SwiftUI scene lifecycle, so `AppDelegate.application(_:open:)` 
 ## Known limitations
 
 - Groups created before the `memberIds` refactor need a backfill before they appear in the group list (see "Current state" above).
-- Firestore security rules are not in this repo; until tightened, group data is only protected by however the Firebase console is configured.
+- Group docs are readable by any signed-in user (invite-code lookup constraint; see "Current state").
 - `joinGroup`/`leaveGroup` paired writes (member doc + `memberIds`) are not atomic batches.
 - Auth flows assume `Auth.auth().currentUser` for identity throughout services rather than injecting the user.
 - CarPlay navigation is unwired (see CarPlay section).
-- No tests or linters; the simulator build is the only check.
+- No linters; 13 audit-verified bugs documented by the failing test suite remain unfixed.

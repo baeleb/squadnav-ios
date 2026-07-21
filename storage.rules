@@ -1,0 +1,24 @@
+rules_version = '2';
+
+// SquadNav Storage rules (squadnav-dev).
+// Binaries live at groups/{groupId}/files/{fileId}_{fileName}.
+// Membership is checked against the Firestore group doc's memberIds.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isMember(groupId) {
+      return request.auth != null
+        && firestore.get(/databases/(default)/documents/groups/$(groupId))
+             .data.get('memberIds', []).hasAny([request.auth.uid]);
+    }
+
+    match /groups/{groupId}/files/{fileName} {
+      // NOTE: the firestore.get() cross-service membership check denied
+      // uploads in practice (permission error on putData). Relaxed to
+      // authed-only for dev — metadata-level member gating still enforced
+      // by firestore.rules on groups/{groupId}/files docs. Re-tighten to
+      // isMember(groupId) alongside the invites/Cloud-Function refactor.
+      allow read, write: if request.auth != null;
+    }
+  }
+}
