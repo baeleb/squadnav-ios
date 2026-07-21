@@ -176,12 +176,24 @@ class GroupService: ObservableObject {
             throw GroupError.notAuthenticated
         }
         let groupRef = db.collection("groups").document(groupId)
+        let oldLeaderId = try await groupRef.getDocument().data()?["createdBy"] as? String
+
         // Role write first: rules only let the CURRENT leader write
         // `role` on another member's doc — after the createdBy write
         // the caller is no longer leader and would be denied.
         try await groupRef.collection("members").document(newLeaderId)
             .updateData(["role": "leader"])
         try await groupRef.updateData(["createdBy": newLeaderId])
+
+        // Demote the old leader's role, or the members list shows two
+        // leaders (createdBy moved, but their role stayed "leader").
+        // After the createdBy write the new leader holds role-write
+        // permission, so this also works on the involuntary-claim path.
+        // try?: old leader's doc may already be gone (voluntary leave).
+        if let oldLeaderId, oldLeaderId != newLeaderId {
+            try? await groupRef.collection("members").document(oldLeaderId)
+                .updateData(["role": "driver"])
+        }
     }
 
     /// Involuntary handoff: if the leader's member doc is missing (left
@@ -232,6 +244,17 @@ class GroupService: ObservableObject {
             "destinationLongitude": longitude,
             "destinationName": name,
             "routePolyline": routePolyline as Any
+        ])
+    }
+
+    /// Clears the shared destination + route (leader only, enforced by
+    /// rules: only createdBy can update these fields).
+    func clearDestination(groupId: String) async throws {
+        try await db.collection("groups").document(groupId).updateData([
+            "destinationLatitude": FieldValue.delete(),
+            "destinationLongitude": FieldValue.delete(),
+            "destinationName": FieldValue.delete(),
+            "routePolyline": FieldValue.delete()
         ])
     }
 

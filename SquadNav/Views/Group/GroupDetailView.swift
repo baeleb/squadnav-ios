@@ -322,19 +322,88 @@ struct GroupMapPreview: View {
     // Members who have never uploaded a location sit at the default (0,0) —
     // Gulf of Guinea — and drag the camera into the ocean. (lastUpdated can't
     // be used as the signal: @ServerTimestamp writes a value at creation.)
+    // Self is excluded — rendered live above with the directional triangle.
     private var locatedMembers: [MemberLocation] {
         groupViewModel.groupService.members.filter {
-            $0.latitude != 0 || $0.longitude != 0
+            ($0.latitude != 0 || $0.longitude != 0) && $0.id != groupViewModel.currentUserId
         }
+    }
+
+    /// Current user's first name, from their member doc (falls back to "You").
+    private var currentUserFirstName: String {
+        groupViewModel.groupService.members
+            .first { $0.id == groupViewModel.currentUserId }?
+            .displayName.components(separatedBy: " ").first ?? "You"
+    }
+
+    /// Degrees clockwise from north; course when moving, compass otherwise.
+    private var currentUserHeadingDegrees: Double {
+        if let course = navigationVM.locationService.currentLocation?.course, course >= 0 {
+            return course
+        }
+        return navigationVM.locationService.heading?.trueHeading ?? 0
+    }
+
+    /// Navigation-style triangle pointing in the travel direction with the
+    /// driver's first name underneath (matches NavigationMapView's style).
+    private func directionalMarker(name: String, headingDegrees: Double, color: Color) -> some View {
+        VStack(spacing: 2) {
+            Image(systemName: "location.north.fill")
+                .font(.system(size: 24))
+                .foregroundColor(color)
+                .rotationEffect(.degrees(headingDegrees))
+                .shadow(color: color.opacity(0.6), radius: 5)
+
+            Text(name)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Color.black.opacity(0.7)))
+        }
+    }
+
+    // Route to draw: prefer the local engine's coordinates (just
+    // calculated); fall back to decoding the polyline stored on the group
+    // doc, which is the only source after view recreation and the only
+    // source on devices that didn't set the destination.
+    private var routeCoordinates: [CLLocationCoordinate2D] {
+        let local = navigationVM.navigationService.routePolylineCoordinates
+        if !local.isEmpty { return local }
+        guard let polyline = groupViewModel.groupService.activeGroup?.routePolyline,
+              !polyline.isEmpty else { return [] }
+        return RouteEncoder.decode(polyline: polyline)
     }
 
     var body: some View {
         ZStack {
             // Map placeholder
             Map(position: $cameraPosition) {
-                // Current user location (gives the camera a meaningful frame
-                // when no member has uploaded a location yet)
-                UserAnnotation()
+                // Route polyline (from local engine or the shared group doc)
+                if !routeCoordinates.isEmpty {
+                    MapPolyline(coordinates: routeCoordinates)
+                        .stroke(
+                            LinearGradient(
+                                colors: [AppTheme.primary, AppTheme.accent],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            lineWidth: 5
+                        )
+                }
+
+                // Current user — live directional triangle (same style as
+                // the navigation view; replaces the native UserAnnotation
+                // dot that duplicated the member pin)
+                if let location = navigationVM.locationService.currentLocation {
+                    Annotation("", coordinate: location.coordinate) {
+                        directionalMarker(
+                            name: currentUserFirstName,
+                            headingDegrees: currentUserHeadingDegrees,
+                            color: Color(hex: "34C759")
+                        )
+                    }
+                }
 
                 // Show member annotations
                 ForEach(locatedMembers) { member in
@@ -413,6 +482,17 @@ struct GroupMapPreview: View {
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .foregroundColor(.white)
                         Spacer()
+
+                        // Leader can clear the destination for everyone
+                        if groupViewModel.isLeader {
+                            Button {
+                                Task { await navigationVM.clearDestination() }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(AppTheme.textMuted)
+                            }
+                        }
                     }
                     .padding(14)
                     .background(
@@ -425,11 +505,15 @@ struct GroupMapPreview: View {
         }
     }
 
-    /// Moves the camera to the group's destination (5 km frame), if any.
+    /// Moves the camera to the group's destination (5 km frame), if any;
+    /// a cleared destination returns the camera to the user.
     private func flyToDestination() {
         guard let activeGroup = groupViewModel.groupService.activeGroup,
               let lat = activeGroup.destinationLatitude,
-              let lng = activeGroup.destinationLongitude else { return }
+              let lng = activeGroup.destinationLongitude else {
+            cameraPosition = .userLocation(fallback: .automatic)
+            return
+        }
         withAnimation(.easeInOut(duration: 0.6)) {
             cameraPosition = .region(MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: lat, longitude: lng),
