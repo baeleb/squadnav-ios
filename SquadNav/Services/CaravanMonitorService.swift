@@ -10,7 +10,8 @@ class CaravanMonitorService: ObservableObject {
     @Published var alerts: [CaravanAlert] = []
 
     private var routeCoordinates: [CLLocationCoordinate2D] = []
-    private var stoppedTimers: [String: Date] = [:] // userId -> when they stopped
+    // Internal (not private) purely as a test seam for SquadNavTests.
+    var stoppedTimers: [String: Date] = [:] // userId -> when they stopped
 
     private let offRouteThreshold: CLLocationDistance = 100
     private let behindDistanceThreshold: CLLocationDistance = 2000  // 2km
@@ -28,6 +29,11 @@ class CaravanMonitorService: ObservableObject {
 
     func setRoute(coordinates: [CLLocationCoordinate2D]) {
         self.routeCoordinates = coordinates
+        // New navigation session: drop per-session observation state so a
+        // member who was stopped/off-route LAST session isn't instantly
+        // re-alerted on the first tick of this one.
+        stoppedTimers = [:]
+        memberStatuses = [:]
     }
 
     /// Called periodically to evaluate all members' statuses.
@@ -72,10 +78,23 @@ class CaravanMonitorService: ObservableObject {
         }
     }
 
-    private func evaluateMemberStatus(
+    // Internal (not private) purely as a test seam for SquadNavTests.
+    func evaluateMemberStatus(
         member: MemberLocation,
         leader: MemberLocation?
     ) -> DriverStatus {
+        // Members who never uploaded a real location sit at the default
+        // (0,0) — they are not participating in navigation; do not evaluate.
+        guard member.latitude != 0 || member.longitude != 0 else { return .idle }
+
+        // Stale locations: uploads run every ~3s while navigating, so
+        // anything older than 2 minutes means the member stopped
+        // navigating (app closed, nav ended, permissions lost).
+        if let lastUpdated = member.lastUpdated,
+           Date().timeIntervalSince(lastUpdated) > 120 {
+            return .idle
+        }
+
         let memberLocation = CLLocation(latitude: member.latitude, longitude: member.longitude)
 
         // 1. Check if off-route
@@ -84,8 +103,9 @@ class CaravanMonitorService: ObservableObject {
             return .offRoute
         }
 
-        // 2. Check if stopped
-        if member.speed < stoppedSpeedThreshold {
+        // 2. Check if stopped. CLLocation.speed is -1 when invalid —
+        // an invalid reading must not count as "stopped".
+        if member.speed >= 0 && member.speed < stoppedSpeedThreshold {
             if let stopStart = stoppedTimers[member.id ?? ""] {
                 if Date().timeIntervalSince(stopStart) > stoppedTimeThreshold {
                     return .stopped

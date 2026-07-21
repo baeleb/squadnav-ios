@@ -87,3 +87,20 @@ iOSInjectionProject/
 # We are generating the Xcode project, so let's ignore it
 SquadNav.xcodeproj/
 SquadNav.xcworkspace/
+
+# Firebase
+#
+# Real per-environment config lives only on each dev machine / CI.
+# Use SquadNav/Resources/GoogleService-Info.plist.example as the template.
+SquadNav/Resources/GoogleService-Info.plist
+
+# Firebase CLI
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Cloud Functions
+functions/node_modules/
+
+# macOS
+.DS_Store

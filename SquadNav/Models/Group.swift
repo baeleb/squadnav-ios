@@ -12,6 +12,12 @@ struct Group: Identifiable, Codable, Equatable, Hashable {
     var routePolyline: String?
     var isNavigating: Bool
     var createdAt: Date
+    // Server-set on every startNavigation; the cleanupGroups Cloud
+    // Function deletes groups with no navigation in the last 14 days.
+    // Optional: groups created before this field lack it (falls back to
+    // createdAt server-side). Plain Date? — @ServerTimestamp would fail
+    // decode on absent keys.
+    var lastNavigatedAt: Date?
     // Optional for backward compatibility: groups created before the
     // membership-query refactor don't have this field in Firestore.
     var memberIds: [String]?
@@ -31,6 +37,7 @@ struct Group: Identifiable, Codable, Equatable, Hashable {
         routePolyline: String? = nil,
         isNavigating: Bool = false,
         createdAt: Date = Date(),
+        lastNavigatedAt: Date? = nil,
         memberIds: [String]? = nil
     ) {
         self.id = id
@@ -43,6 +50,7 @@ struct Group: Identifiable, Codable, Equatable, Hashable {
         self.routePolyline = routePolyline
         self.isNavigating = isNavigating
         self.createdAt = createdAt
+        self.lastNavigatedAt = lastNavigatedAt
         self.memberIds = memberIds
     }
 }

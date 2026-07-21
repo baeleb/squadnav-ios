@@ -8,39 +8,36 @@ struct CreateGroupView: View {
     @State private var qrCodeData: Data?
 
     var body: some View {
-        ZStack {
-            AppTheme.backgroundGradient
-                .ignoresSafeArea()
-
-            VStack(spacing: 24) {
-                // Header
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(AppTheme.textMuted)
-                    }
-                    Spacer()
-                    Text("New Caravan")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                    Spacer()
-                    Color.clear.frame(width: 28)
+        VStack(spacing: 24) {
+            // Header
+            HStack {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(AppTheme.textMuted)
                 }
-                .padding(.top, 20)
-
-                if groupViewModel.showCreateSuccess, let group = groupViewModel.createdGroup {
-                    // Success State
-                    successView(group: group)
-                } else {
-                    // Create Form
-                    createForm
-                }
-
                 Spacer()
+                Text("New Caravan")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                Spacer()
+                Color.clear.frame(width: 28)
             }
-            .padding(.horizontal, 20)
+            .padding(.top, 20)
+
+            if groupViewModel.showCreateSuccess, let group = groupViewModel.createdGroup {
+                // Success State
+                successView(group: group)
+            } else {
+                // Create Form
+                createForm
+            }
+
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(AppTheme.backgroundGradient.ignoresSafeArea())
     }
 
     // MARK: - Create Form
@@ -125,69 +122,7 @@ struct CreateGroupView: View {
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
 
-            // Invite Code
-            VStack(spacing: 8) {
-                Text("Share this code with your drivers")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundColor(AppTheme.textSecondary)
-
-                Text(group.inviteCode)
-                    .font(.system(size: 36, weight: .bold, design: .monospaced))
-                    .foregroundColor(AppTheme.primary)
-                    .tracking(8)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(AppTheme.primary.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(AppTheme.primary.opacity(0.3), lineWidth: 1)
-                            )
-                    )
-            }
-
-            // QR Code
-            if let qrData = groupViewModel.generateQRCode(for: group) {
-                VStack(spacing: 8) {
-                    Text("or scan QR code")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(AppTheme.textSecondary)
-
-                    if let uiImage = UIImage(data: qrData) {
-                        Image(uiImage: uiImage)
-                            .interpolation(.none)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 180, height: 180)
-                            .padding(16)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(.white)
-                            )
-                    }
-                }
-            }
-
-            // Share button
-            ShareLink(
-                item: "Join my SquadNav caravan! Code: \(group.inviteCode)",
-                subject: Text("Join my caravan"),
-                message: Text("Use invite code \(group.inviteCode) to join my caravan on SquadNav!")
-            ) {
-                HStack {
-                    Image(systemName: "square.and.arrow.up")
-                    Text("Share Invite")
-                }
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(AppTheme.primaryGradient)
-                )
-            }
+            InviteShareView(group: group, groupViewModel: groupViewModel)
 
             Button("Done") {
                 groupViewModel.showCreateSuccess = false
@@ -196,7 +131,5 @@ struct CreateGroupView: View {
             .font(.system(size: 16, weight: .semibold, design: .rounded))
             .foregroundColor(AppTheme.textSecondary)
         }
-        .padding(24)
-        .glassCard()
     }
 }

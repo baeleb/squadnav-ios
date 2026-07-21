@@ -6,7 +6,9 @@ struct GroupDetailView: View {
     @StateObject private var navigationVM: NavigationViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: GroupTab = .map
-    @State private var showDestinationSearch = false
+    @State private var showSuccessorPicker = false
+    @State private var showInviteSheet = false
+    @State private var showDeleteConfirmation = false
 
     enum GroupTab: String, CaseIterable {
         case map = "Map"
@@ -59,23 +61,29 @@ struct GroupDetailView: View {
 
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    if groupViewModel.isLeader {
-                        Button {
-                            showDestinationSearch = true
-                        } label: {
-                            Label("Set Destination", systemImage: "mappin.and.ellipse")
-                        }
-                    }
-
                     Button(role: .destructive) {
-                        Task {
-                            await groupViewModel.leaveGroup(group)
-                            if groupViewModel.error == nil {
-                                dismiss()
+                        // A leader leaving a non-empty group must name a
+                        // successor first, or the group goes leaderless.
+                        if groupViewModel.isLeader && !otherMembers.isEmpty {
+                            showSuccessorPicker = true
+                        } else {
+                            Task {
+                                await groupViewModel.leaveGroup(group)
+                                if groupViewModel.error == nil {
+                                    dismiss()
+                                }
                             }
                         }
                     } label: {
                         Label("Leave Group", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+
+                    if groupViewModel.isLeader {
+                        Button(role: .destructive) {
+                            showDeleteConfirmation = true
+                        } label: {
+                            Label("Delete Group", systemImage: "trash.fill")
+                        }
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle.fill")
@@ -84,10 +92,54 @@ struct GroupDetailView: View {
                 }
             }
         }
+        .confirmationDialog(
+            "Choose the next leader",
+            isPresented: $showSuccessorPicker,
+            titleVisibility: .visible
+        ) {
+            ForEach(otherMembers) { member in
+                Button(member.displayName) {
+                    Task {
+                        await groupViewModel.transferLeadershipAndLeave(group, to: member)
+                        if groupViewModel.error == nil {
+                            dismiss()
+                        }
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("You're the leader. Pick who takes over before you leave.")
+        }
+        .alert("Delete \"\(group.name)\"?", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete for Everyone", role: .destructive) {
+                Task {
+                    await groupViewModel.deleteGroup(group)
+                    if groupViewModel.error == nil {
+                        dismiss()
+                    }
+                }
+            }
+        } message: {
+            Text("This permanently deletes the group, its chat, files, and member data for everyone. This cannot be undone.")
+        }
         .toolbarBackground(AppTheme.backgroundDark, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .sheet(isPresented: $showDestinationSearch) {
-            DestinationSearchView(navigationVM: navigationVM)
+        .sheet(isPresented: $showInviteSheet) {
+            ZStack {
+                AppTheme.backgroundGradient.ignoresSafeArea()
+                VStack(spacing: 20) {
+                    Text("Invite Drivers")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.top, 24)
+                    InviteShareView(group: group, groupViewModel: groupViewModel)
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+            }
+            .presentationDetents([.medium, .large])
         }
         .fullScreenCover(isPresented: $navigationVM.showNavigation) {
             NavigationMapView(navigationVM: navigationVM, groupViewModel: groupViewModel)
@@ -110,27 +162,42 @@ struct GroupDetailView: View {
         }
     }
 
+    /// Members other than the current user (successor candidates).
+    private var otherMembers: [MemberLocation] {
+        groupViewModel.groupService.members.filter { $0.id != groupViewModel.currentUserId }
+    }
+
     // MARK: - Group Header
 
     private var groupHeader: some View {
         HStack(spacing: 16) {
-            // Invite code
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Invite Code")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(AppTheme.textMuted)
-                    .textCase(.uppercase)
+            // Invite code (tap → full invite view: code + QR + share)
+            Button {
+                showInviteSheet = true
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Invite Code")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(AppTheme.textMuted)
+                        .textCase(.uppercase)
 
-                Text(group.inviteCode)
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundColor(AppTheme.primary)
+                    HStack(spacing: 6) {
+                        Text(group.inviteCode)
+                            .font(.system(size: 16, weight: .bold, design: .monospaced))
+                            .foregroundColor(AppTheme.primary)
+                        Image(systemName: "qrcode")
+                            .font(.system(size: 12))
+                            .foregroundColor(AppTheme.textMuted)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(AppTheme.primary.opacity(0.1))
+                )
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(AppTheme.primary.opacity(0.1))
-            )
+            .buttonStyle(.plain)
 
             Spacer()
 
@@ -248,13 +315,29 @@ struct GroupDetailView: View {
 struct GroupMapPreview: View {
     @ObservedObject var navigationVM: NavigationViewModel
     @ObservedObject var groupViewModel: GroupViewModel
+    @State private var searchText = ""
+    @State private var searchDebounceTask: Task<Void, Never>?
+    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
+
+    // Members who have never uploaded a location sit at the default (0,0) —
+    // Gulf of Guinea — and drag the camera into the ocean. (lastUpdated can't
+    // be used as the signal: @ServerTimestamp writes a value at creation.)
+    private var locatedMembers: [MemberLocation] {
+        groupViewModel.groupService.members.filter {
+            $0.latitude != 0 || $0.longitude != 0
+        }
+    }
 
     var body: some View {
         ZStack {
             // Map placeholder
-            Map {
+            Map(position: $cameraPosition) {
+                // Current user location (gives the camera a meaningful frame
+                // when no member has uploaded a location yet)
+                UserAnnotation()
+
                 // Show member annotations
-                ForEach(groupViewModel.groupService.members) { member in
+                ForEach(locatedMembers) { member in
                     Annotation(member.displayName, coordinate: member.coordinate) {
                         VStack(spacing: 2) {
                             Image(systemName: member.isLeader ? "car.top.radiowaves.front.fill" : "car.fill")
@@ -273,9 +356,49 @@ struct GroupMapPreview: View {
                         }
                     }
                 }
+
+                // Destination pin
+                if let activeGroup = groupViewModel.groupService.activeGroup,
+                   let lat = activeGroup.destinationLatitude,
+                   let lng = activeGroup.destinationLongitude {
+                    Annotation("Destination", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)) {
+                        Image(systemName: "flag.checkered.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(AppTheme.accent)
+                            .shadow(color: AppTheme.accent.opacity(0.5), radius: 8)
+                    }
+                }
             }
             .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
+            .mapControls {
+                MapCompass()
+                MapUserLocationButton()
+            }
             .colorScheme(.dark)
+            // Fly the camera to the destination when it gets set (search
+            // pick on this device, or set from another device) and on
+            // appear if one already exists.
+            .onChange(of: groupViewModel.groupService.activeGroup?.destinationLatitude) { _, _ in
+                flyToDestination()
+            }
+            .onChange(of: groupViewModel.groupService.activeGroup?.destinationLongitude) { _, _ in
+                flyToDestination()
+            }
+            .onAppear { flyToDestination() }
+
+            // Overlay: leader destination search (replaces the old
+            // ellipsis-menu DestinationSearchView sheet)
+            VStack(spacing: 0) {
+                if groupViewModel.isLeader {
+                    destinationSearchBar
+
+                    if !searchText.isEmpty && !navigationVM.searchResults.isEmpty {
+                        destinationSearchResults
+                    }
+                }
+
+                Spacer()
+            }
 
             // Overlay: destination info
             VStack {
@@ -300,6 +423,115 @@ struct GroupMapPreview: View {
                 }
             }
         }
+    }
+
+    /// Moves the camera to the group's destination (5 km frame), if any.
+    private func flyToDestination() {
+        guard let activeGroup = groupViewModel.groupService.activeGroup,
+              let lat = activeGroup.destinationLatitude,
+              let lng = activeGroup.destinationLongitude else { return }
+        withAnimation(.easeInOut(duration: 0.6)) {
+            cameraPosition = .region(MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: lat, longitude: lng),
+                latitudinalMeters: 5000,
+                longitudinalMeters: 5000
+            ))
+        }
+    }
+
+    // MARK: - Destination Search (leader only)
+
+    private var destinationSearchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(AppTheme.textMuted)
+
+            TextField("Search destination...", text: $searchText)
+                .font(.system(size: 15, design: .rounded))
+                .foregroundColor(.white)
+                .autocorrectionDisabled()
+
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                    navigationVM.searchResults = []
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(AppTheme.textMuted)
+                }
+            }
+
+            if navigationVM.isSearching {
+                ProgressView()
+                    .tint(AppTheme.primary)
+                    .scaleEffect(0.8)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(AppTheme.backgroundCard.opacity(0.95))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .onChange(of: searchText) { _, newValue in
+            searchDebounceTask?.cancel()
+            searchDebounceTask = Task {
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                if !Task.isCancelled {
+                    await navigationVM.searchDestination(query: newValue)
+                }
+            }
+        }
+    }
+
+    private var destinationSearchResults: some View {
+        ScrollView {
+            LazyVStack(spacing: 4) {
+                ForEach(navigationVM.searchResults.prefix(5), id: \.self) { mapItem in
+                    Button {
+                        let item = mapItem
+                        searchText = ""
+                        navigationVM.searchResults = []
+                        Task { await navigationVM.setDestinationAndCalculateRoute(item) }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(AppTheme.accent)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(mapItem.name ?? "Unknown")
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.white)
+                                if let address = mapItem.placemark.formattedAddress {
+                                    Text(address)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(AppTheme.textSecondary)
+                                        .lineLimit(1)
+                                }
+                            }
+
+                            Spacer()
+                        }
+                        .padding(10)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(6)
+        }
+        .frame(maxHeight: 260)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(AppTheme.backgroundCard.opacity(0.95))
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 6)
     }
 }
 

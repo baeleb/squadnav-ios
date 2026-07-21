@@ -86,9 +86,16 @@ class FirebaseAuthService: ObservableObject, AuthServiceProtocol {
     }
 
     func signInWithGoogle() async throws -> AppUser {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first,
-              let rootViewController = window.rootViewController else {
+        // connectedScenes.first/windows.first are unreliable: the set is
+        // unordered and windows can include non-key system windows. Prefer
+        // the foreground-active scene and its key window.
+        let windowScenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+        let windowScene = windowScenes.first { $0.activationState == .foregroundActive }
+            ?? windowScenes.first
+        guard let rootViewController = windowScene?.windows
+            .first(where: { $0.isKeyWindow })?.rootViewController
+            ?? windowScene?.windows.first?.rootViewController else {
             throw AuthError.noRootViewController
         }
 

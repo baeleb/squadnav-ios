@@ -160,7 +160,8 @@ class NavigationService: ObservableObject {
         return minDistance
     }
 
-    private var estimatedPolylineIndex: Int = 0
+    // Internal (not private) purely as a test seam for SquadNavTests.
+    var estimatedPolylineIndex: Int = 0
 
     private func perpendicularDistance(
         point: CLLocationCoordinate2D,

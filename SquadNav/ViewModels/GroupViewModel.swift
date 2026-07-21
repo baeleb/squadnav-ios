@@ -65,18 +65,43 @@ class GroupViewModel: ObservableObject {
         }
     }
 
+    /// Voluntary leader exit: hand leadership to the chosen successor,
+    /// then leave. If the transfer fails the leave is aborted so the
+    /// group never ends up leaderless by intention.
+    func transferLeadershipAndLeave(_ group: Group, to successor: MemberLocation) async {
+        guard let groupId = group.id, let successorId = successor.id else { return }
+        do {
+            try await groupService.transferLeadership(groupId: groupId, newLeaderId: successorId)
+            try await groupService.leaveGroup(groupId: groupId)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    /// Leader-only: deletes the group for every member.
+    func deleteGroup(_ group: Group) async {
+        guard let groupId = group.id else { return }
+        do {
+            try await groupService.deleteGroup(groupId: groupId)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
     // MARK: - Group Detail
 
     func selectGroup(_ group: Group) {
         guard let groupId = group.id else { return }
         groupService.listenToGroup(groupId: groupId)
         groupService.listenToMembers(groupId: groupId)
+        groupService.startPresence(groupId: groupId)
         chatService.listenToMessages(groupId: groupId)
         fileService.listenToFiles(groupId: groupId)
     }
 
     func deselectGroup() {
         groupService.stopListeningToGroup()
+        groupService.stopPresence()
         chatService.stopListening()
         fileService.stopListening()
     }
@@ -92,5 +117,9 @@ class GroupViewModel: ObservableObject {
     var isLeader: Bool {
         guard let userId = Auth.auth().currentUser?.uid else { return false }
         return groupService.activeGroup?.createdBy == userId
+    }
+
+    var currentUserId: String? {
+        Auth.auth().currentUser?.uid
     }
 }
