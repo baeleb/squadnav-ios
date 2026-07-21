@@ -167,6 +167,20 @@ class NavigationViewModel: ObservableObject {
         }
     }
 
+    /// Leader clears the shared destination: removes it from Firestore
+    /// (all members' maps update via the group listener) and drops the
+    /// local route state.
+    func clearDestination() async {
+        guard isLeader, let groupId = groupService.activeGroup?.id else { return }
+        selectedDestination = nil
+        navigationService.stopNavigation()
+        do {
+            try await groupService.clearDestination(groupId: groupId)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
     func startNavigation() async {
         guard let groupId = groupService.activeGroup?.id else { return }
 

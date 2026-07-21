@@ -11,6 +11,9 @@ struct NavigationMapView: View {
     @State private var showCaravanPane = true
     @State private var paneTab: CaravanPaneTab = .chat
     @State private var paneDetent: PresentationDetent = .height(64)
+    // Width of the pane, measured via GeometryReader; drives the
+    // compact-vs-stacked bar decision.
+    @State private var paneWidth: CGFloat = 390
     // Camera follows the user only after the brief full-route intro.
     @State private var followUser = false
 
@@ -41,9 +44,6 @@ struct NavigationMapView: View {
                 )
 
                 Spacer()
-
-                // Bottom: Info bar
-                bottomBar
             }
 
             // Close button
@@ -86,7 +86,7 @@ struct NavigationMapView: View {
         // default; tapping a tab expands it, user can drag it back down.
         .sheet(isPresented: $showCaravanPane) {
             caravanPane
-                .presentationDetents([.height(64), .medium], selection: $paneDetent)
+                .presentationDetents([.height(64), .height(104), .medium], selection: $paneDetent)
                 .presentationBackgroundInteraction(.enabled(upThrough: .medium))
                 .presentationBackground(AppTheme.backgroundDark)
                 .interactiveDismissDisabled()
@@ -96,38 +96,38 @@ struct NavigationMapView: View {
     // MARK: - Caravan Pane
 
     private var isPaneExpanded: Bool {
-        paneDetent != .height(64)
+        paneDetent == .medium
     }
 
     private var caravanPane: some View {
         VStack(spacing: 0) {
-            // Tab row — always visible, this is the minimized state.
-            // Tapping a tab expands the pane to show its content.
-            HStack(spacing: 0) {
-                ForEach(CaravanPaneTab.allCases, id: \.self) { tab in
-                    Button {
-                        if paneTab == tab && isPaneExpanded {
-                            // Tapping the active tab again collapses.
-                            paneDetent = .height(64)
-                        } else {
-                            paneTab = tab
-                            paneDetent = .medium
-                        }
-                    } label: {
-                        VStack(spacing: 4) {
-                            Image(systemName: tab.icon)
-                                .font(.system(size: 16))
-                            Text(tab.rawValue)
-                                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        }
-                        .foregroundColor(paneTab == tab && isPaneExpanded ? AppTheme.primary : AppTheme.textMuted)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+            // Merged status + tab bar — the minimized state. Compact
+            // single row when values fit the measured width; stacked
+            // status-over-tabs (full-size values) when they'd overflow.
+            GeometryReader { geo in
+                SwiftUI.Group {
+                    if needsStackedBar(width: geo.size.width) {
+                        stackedBar
+                    } else {
+                        compactBar
                     }
                 }
+                .onAppear { paneWidth = geo.size.width }
+                .onChange(of: geo.size.width) { _, w in paneWidth = w }
             }
-            .frame(height: 64)
+            .frame(height: minBarHeight)
             .background(AppTheme.backgroundCard.opacity(0.5))
+            // Keep the minimized detent matched to the bar's current
+            // layout (compact 64 / stacked 104): re-pin on layout change
+            // and don't let a drag-down rest at the wrong height.
+            .onChange(of: minBarHeight) { _, h in
+                if !isPaneExpanded { paneDetent = .height(h) }
+            }
+            .onChange(of: paneDetent) { _, d in
+                if !isPaneExpanded && d != .height(minBarHeight) {
+                    paneDetent = .height(minBarHeight)
+                }
+            }
 
             // Content only exists when expanded — keeps the minimized
             // state to just the tab row and avoids pushing overlays
@@ -151,6 +151,231 @@ struct NavigationMapView: View {
         }
     }
 
+    // MARK: - Directional Markers
+
+    /// Current user's first name, from their member doc (falls back to "You").
+    private var currentUserFirstName: String {
+        groupViewModel.groupService.members
+            .first { $0.id == groupViewModel.currentUserId }?
+            .displayName.components(separatedBy: " ").first ?? "You"
+    }
+
+    /// Degrees clockwise from north. Course (direction of travel) is the
+    /// right signal while driving; compass heading is the fallback when
+    /// course is invalid (-1), e.g. standing still.
+    private var currentUserHeadingDegrees: Double {
+        if let course = navigationVM.locationService.currentLocation?.course, course >= 0 {
+            return course
+        }
+        return navigationVM.locationService.heading?.trueHeading ?? 0
+    }
+
+    /// Navigation-style triangle pointing in the travel direction with the
+    /// driver's first name underneath. "location.north.fill" points up at
+    /// 0°, and rotation is clockwise-positive — matching compass degrees.
+    private func directionalMarker(name: String, headingDegrees: Double, color: Color) -> some View {
+        VStack(spacing: 2) {
+            Image(systemName: "location.north.fill")
+                .font(.system(size: 24))
+                .foregroundColor(color)
+                .rotationEffect(.degrees(headingDegrees))
+                .shadow(color: color.opacity(0.6), radius: 5)
+
+            Text(name)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Color.black.opacity(0.7)))
+        }
+    }
+
+    /// Compact initials badge for other caravan members — no
+    /// directionality, no name label underneath.
+    private func initialsMarker(name: String, color: Color) -> some View {
+        let initials = name.components(separatedBy: " ")
+            .compactMap { $0.first }
+            .prefix(2)
+            .map(String.init)
+            .joined()
+            .uppercased()
+
+        return ZStack {
+            Circle()
+                .fill(color)
+                .frame(width: 30, height: 30)
+                .shadow(color: color.opacity(0.5), radius: 4)
+            Text(initials.isEmpty ? "?" : initials)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+        }
+    }
+
+    // MARK: - Adaptive Bar Layout
+
+    /// Minimized bar height: short when compact, tall when stacked.
+    private var minBarHeight: CGFloat {
+        needsStackedBar(width: paneWidth) ? 104 : 64
+    }
+
+    /// Estimates whether the compact single-row bar overflows `width`:
+    /// sums estimated text widths of the status values + tab icons.
+    private func needsStackedBar(width: CGFloat) -> Bool {
+        let state = navigationVM.navigationService.navigationState
+        let onRoute = groupViewModel.groupService.members.filter { $0.status == .onRoute }.count
+        let total = groupViewModel.groupService.members.count
+        let values = [state.formattedETA, state.formattedDistance, "\(onRoute)/\(total)"]
+
+        let pillFont = UIFont.systemFont(ofSize: 13, weight: .bold)
+        let pillsWidth: CGFloat = values
+            .map { max(52, ($0 as NSString).size(withAttributes: [.font: pillFont]).width + 20) }
+            .reduce(0, +)
+        let tabsWidth: CGFloat = 3 * 48 + 12 // three icons + divider
+
+        return pillsWidth + tabsWidth > width
+    }
+
+    /// Compact: one row, abbreviated labels.
+    private var compactBar: some View {
+        HStack(spacing: 0) {
+            statusPill(label: "ETA", value: navigationVM.navigationService.navigationState.formattedETA)
+            statusPill(label: "DIST", value: navigationVM.navigationService.navigationState.formattedDistance)
+            caravanStatusPill
+
+            Divider()
+                .frame(height: 28)
+                .overlay(Color.white.opacity(0.15))
+
+            paneTabButtons(showLabels: false)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Stacked: status on top, tabs below, full-size values.
+    private var stackedBar: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                statusPillLarge(label: "ETA", value: navigationVM.navigationService.navigationState.formattedETA)
+                statusPillLarge(label: "DISTANCE", value: navigationVM.navigationService.navigationState.formattedDistance)
+                caravanStatusPillLarge
+            }
+            .frame(height: 50)
+
+            Divider()
+                .overlay(Color.white.opacity(0.08))
+
+            HStack(spacing: 0) {
+                paneTabButtons(showLabels: true)
+            }
+            .frame(height: 54)
+        }
+    }
+
+    // MARK: - Pane Tab Buttons
+
+    @ViewBuilder
+    private func paneTabButtons(showLabels: Bool) -> some View {
+        ForEach(CaravanPaneTab.allCases, id: \.self) { tab in
+            Button {
+                if paneTab == tab && isPaneExpanded {
+                    // Tapping the active tab again collapses.
+                    paneDetent = .height(minBarHeight)
+                } else {
+                    paneTab = tab
+                    paneDetent = .medium
+                }
+            } label: {
+                if showLabels {
+                    VStack(spacing: 4) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 16))
+                        Text(tab.rawValue)
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(paneTab == tab && isPaneExpanded ? AppTheme.primary : AppTheme.textMuted)
+                    .frame(maxWidth: .infinity)
+                } else {
+                    Image(systemName: tab.icon)
+                        .font(.system(size: 18))
+                        .foregroundColor(paneTab == tab && isPaneExpanded ? AppTheme.primary : AppTheme.textMuted)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    // MARK: - Pane Status Pills
+
+    private func statusPill(label: String, value: String) -> some View {
+        VStack(spacing: 2) {
+            Text(label)
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundColor(AppTheme.textMuted)
+            Text(value)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var caravanStatusPill: some View {
+        let onRoute = groupViewModel.groupService.members.filter { $0.status == .onRoute }.count
+        let total = groupViewModel.groupService.members.count
+
+        return VStack(spacing: 2) {
+            Text("CRVN")
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundColor(AppTheme.textMuted)
+            HStack(spacing: 3) {
+                Circle()
+                    .fill(onRoute == total ? AppTheme.success : AppTheme.warning)
+                    .frame(width: 6, height: 6)
+                Text("\(onRoute)/\(total)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // Large variants for the stacked (overflow) layout — full labels and
+    // values, no shrinking, since there's a whole row to work with.
+
+    private func statusPillLarge(label: String, value: String) -> some View {
+        VStack(spacing: 3) {
+            Text(label)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundColor(AppTheme.textMuted)
+            Text(value)
+                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var caravanStatusPillLarge: some View {
+        let onRoute = groupViewModel.groupService.members.filter { $0.status == .onRoute }.count
+        let total = groupViewModel.groupService.members.count
+
+        return VStack(spacing: 3) {
+            Text("CARAVAN")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundColor(AppTheme.textMuted)
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(onRoute == total ? AppTheme.success : AppTheme.warning)
+                    .frame(width: 8, height: 8)
+                Text("\(onRoute)/\(total)")
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     // MARK: - Map
 
     private var mapView: some View {
@@ -168,32 +393,32 @@ struct NavigationMapView: View {
                     )
             }
 
-            // Current user location
-            UserAnnotation()
+            // Current user — live directional triangle (replaces the
+            // native UserAnnotation dot + full-name label). Driven by
+            // course (direction of travel), falling back to compass.
+            // Title is "": a non-empty title renders a duplicate
+            // plain-text label alongside our capsule.
+            if let location = navigationVM.locationService.currentLocation {
+                Annotation("", coordinate: location.coordinate) {
+                    directionalMarker(
+                        name: currentUserFirstName,
+                        headingDegrees: currentUserHeadingDegrees,
+                        color: Color(hex: "34C759")
+                    )
+                }
+            }
 
-            // Other caravan members (skip never-located phantoms at 0,0 —
-            // lastUpdated can't be the signal, @ServerTimestamp sets it at creation)
-            ForEach(groupViewModel.groupService.members.filter { $0.latitude != 0 || $0.longitude != 0 }) { member in
-                Annotation(member.displayName, coordinate: member.coordinate) {
-                    VStack(spacing: 2) {
-                        ZStack {
-                            Circle()
-                                .fill(Color(hex: member.status.colorHex))
-                                .frame(width: 36, height: 36)
-                                .shadow(color: Color(hex: member.status.colorHex).opacity(0.6), radius: 6)
-
-                            Image(systemName: member.isLeader ? "crown.fill" : "car.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.white)
-                        }
-
-                        Text(member.displayName.components(separatedBy: " ").first ?? "")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.black.opacity(0.7)))
-                    }
+            // Other caravan members — compact initials circle, no
+            // directionality, no name label (skip never-located phantoms
+            // at 0,0 and self, rendered live above)
+            ForEach(groupViewModel.groupService.members.filter {
+                ($0.latitude != 0 || $0.longitude != 0) && $0.id != groupViewModel.currentUserId
+            }) { member in
+                Annotation("", coordinate: member.coordinate) {
+                    initialsMarker(
+                        name: member.displayName,
+                        color: Color(hex: member.status.colorHex)
+                    )
                 }
             }
 
@@ -266,77 +491,6 @@ struct NavigationMapView: View {
             longitudeDelta: max((maxLng - minLng) * 1.3, 0.005)
         )
         mapCameraPosition = .region(MKCoordinateRegion(center: center, span: span))
-    }
-
-    // MARK: - Bottom Bar
-
-    private var bottomBar: some View {
-        HStack(spacing: 24) {
-            // ETA
-            VStack(spacing: 2) {
-                Text("ETA")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(AppTheme.textMuted)
-                    .textCase(.uppercase)
-                Text(navigationVM.navigationService.navigationState.formattedETA)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-            }
-
-            Divider()
-                .frame(height: 36)
-                .overlay(Color.white.opacity(0.15))
-
-            // Distance
-            VStack(spacing: 2) {
-                Text("Distance")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(AppTheme.textMuted)
-                    .textCase(.uppercase)
-                Text(navigationVM.navigationService.navigationState.formattedDistance)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-            }
-
-            Divider()
-                .frame(height: 36)
-                .overlay(Color.white.opacity(0.15))
-
-            // Caravan status
-            VStack(spacing: 2) {
-                Text("Caravan")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(AppTheme.textMuted)
-                    .textCase(.uppercase)
-
-                HStack(spacing: 4) {
-                    let onRoute = groupViewModel.groupService.members.filter { $0.status == .onRoute }.count
-                    let total = groupViewModel.groupService.members.count
-
-                    Circle()
-                        .fill(onRoute == total ? AppTheme.success : AppTheme.warning)
-                        .frame(width: 8, height: 8)
-
-                    Text("\(onRoute)/\(total)")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                }
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(AppTheme.backgroundCard.opacity(0.95))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.3), radius: 20, y: -5)
-        )
-        .padding(.horizontal, 16)
-        .padding(.bottom, 32)
     }
 
     // MARK: - Alert Banner
