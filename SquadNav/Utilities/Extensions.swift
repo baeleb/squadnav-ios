@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import CoreLocation
 
 // MARK: - Color Extension
@@ -25,42 +26,75 @@ extension Color {
             opacity: Double(a) / 255
         )
     }
+
+    /// A color that switches between a light-appearance and dark-appearance hex value
+    /// automatically, following the system appearance (no manual scheme plumbing needed).
+    init(light: String, dark: String) {
+        self.init(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark ? UIColor(Color(hex: dark)) : UIColor(Color(hex: light))
+        })
+    }
 }
 
 // MARK: - App Theme
+//
+// "Flock" palette: warm cream/orange/teal in light appearance, rebased onto the
+// mockup's dark-teal turn-by-turn surface for dark appearance. Token names are kept
+// stable across the old theme so every call site keeps working; only the underlying
+// values change.
 
 enum AppTheme {
     // Primary palette
-    static let primary = Color(hex: "6C63FF")
-    static let primaryDark = Color(hex: "4A42D4")
-    static let accent = Color(hex: "E91E63")
-    static let accentLight = Color(hex: "FF5C8D")
+    static let primary = Color(light: "D9642F", dark: "F2894C")       // orange (CTAs, active states)
+    static let primaryDark = Color(light: "C4592B", dark: "D9642F")   // pressed/darker orange
+    static let accent = Color(light: "4E9A9B", dark: "6FB3B4")        // teal (secondary accent, icon tiles)
+    static let accentLight = Color(light: "6FB3B4", dark: "8CC7C8")
 
     // Background
-    static let backgroundDark = Color(hex: "0D0D1A")
-    static let backgroundCard = Color(hex: "1A1A3E")
-    static let backgroundElevated = Color(hex: "252552")
-    static let backgroundInput = Color(hex: "2A2A5A")
+    static let backgroundDark = Color(light: "FBF3E8", dark: "16241F")      // app background
+    static let backgroundCard = Color(light: "FFFFFF", dark: "24403F")      // elevated cards
+    static let backgroundElevated = Color(light: "F2ECDD", dark: "2E4A48")  // icon tiles, avatar fills
+    static let backgroundInput = Color(light: "FFFFFF", dark: "1C2F2D")     // text field fill
+    static let border = Color(light: "E7DCC8", dark: "35524F")              // input/card hairline
 
     // Text
-    static let textPrimary = Color.white
-    static let textSecondary = Color(hex: "A0A0C0")
-    static let textMuted = Color(hex: "6B6B8D")
+    static let textPrimary = Color(light: "3A2E22", dark: "F5EFE2")
+    static let textSecondary = Color(light: "8A7A64", dark: "A9C9C5")
+    static let textMuted = Color(light: "B3A48C", dark: "6E938F")
 
     // Status
-    static let success = Color(hex: "34C759")
-    static let warning = Color(hex: "FF9500")
-    static let danger = Color(hex: "FF3B30")
+    static let success = Color(light: "6FBE6A", dark: "7ED17A")   // on-route / arrived
+    static let warning = Color(light: "D2A03D", dark: "E6B54F")   // stopped / idle / caution
+    static let danger = Color(light: "E2603A", dark: "FF7A50")    // off-route / behind
+
+    // Warm shadow — used in place of a flat black shadow everywhere in the new theme.
+    static let shadowColor = Color(light: "3C280A", dark: "000000")
+
+    // Deterministic per-member avatar colors (mockup's member-dot palette).
+    static let memberPalette: [Color] = [
+        Color(light: "D9642F", dark: "F2894C"),
+        Color(light: "4E9A9B", dark: "6FB3B4"),
+        Color(light: "6FBE6A", dark: "7ED17A"),
+        Color(light: "D2A03D", dark: "E6B54F"),
+        Color(light: "9B6B9E", dark: "B587B8"),
+        Color(light: "C4592B", dark: "E07A4C"),
+    ]
+
+    /// Stable color for a member identity (Firestore uid or similar), independent of status.
+    static func memberColor(for id: String) -> Color {
+        let hash = id.unicodeScalars.reduce(UInt64(5381)) { ($0 << 5) &+ $0 &+ UInt64($1.value) }
+        return memberPalette[Int(hash % UInt64(memberPalette.count))]
+    }
 
     // Gradients
     static let primaryGradient = LinearGradient(
-        colors: [primary, accent],
+        colors: [primary, Color(light: "F2894C", dark: "F2894C")],
         startPoint: .leading,
         endPoint: .trailing
     )
 
     static let backgroundGradient = LinearGradient(
-        colors: [backgroundDark, Color(hex: "1A1A3E"), backgroundDark],
+        colors: [backgroundDark, backgroundCard.opacity(0.6), backgroundDark],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
@@ -70,42 +104,75 @@ enum AppTheme {
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
+
+    /// Orange hero gradient for full-bleed CTA surfaces (onboarding welcome, invite reveal).
+    static let heroGradient = LinearGradient(
+        colors: [Color(hex: "F2894C"), Color(hex: "E9793A")],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+}
+
+// MARK: - App Fonts
+//
+// Fredoka (display/headings) + Nunito (body/UI) — bundled under SquadNav/Resources/Fonts
+// and registered via project.yml's UIAppFonts. No runtime fallback: these are always
+// available once the app target builds.
+
+enum AppFont {
+    enum DisplayWeight { case medium, semibold, bold }
+    enum BodyWeight { case regular, semibold, bold, extraBold }
+
+    static func fredoka(_ size: CGFloat, _ weight: DisplayWeight = .semibold) -> Font {
+        let name: String
+        switch weight {
+        case .medium: name = "Fredoka-Medium"
+        case .semibold: name = "Fredoka-SemiBold"
+        case .bold: name = "Fredoka-Bold"
+        }
+        return .custom(name, size: size)
+    }
+
+    static func nunito(_ size: CGFloat, _ weight: BodyWeight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .regular: name = "Nunito-Regular"
+        case .semibold: name = "Nunito-SemiBold"
+        case .bold: name = "Nunito-Bold"
+        case .extraBold: name = "Nunito-ExtraBold"
+        }
+        return .custom(name, size: size)
+    }
 }
 
 // MARK: - View Modifiers
 
+/// Flat, warm-shadowed card — replaces the old glassmorphic dark-blur treatment.
 struct GlassCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(AppTheme.backgroundCard.opacity(0.6))
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(AppTheme.backgroundCard)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [Color.white.opacity(0.15), Color.white.opacity(0.05)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(AppTheme.border, lineWidth: 1)
                     )
             )
-            .shadow(color: Color.black.opacity(0.3), radius: 12, x: 0, y: 8)
+            .shadow(color: AppTheme.shadowColor.opacity(0.1), radius: 10, x: 0, y: 4)
     }
 }
 
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 17, weight: .semibold, design: .rounded))
+            .font(AppFont.nunito(17, .extraBold))
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
+            .frame(height: 54)
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(AppTheme.primaryGradient)
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(AppTheme.primary)
             )
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
             .opacity(configuration.isPressed ? 0.9 : 1.0)
@@ -116,13 +183,13 @@ struct PrimaryButtonStyle: ButtonStyle {
 struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 17, weight: .semibold, design: .rounded))
+            .font(AppFont.nunito(17, .extraBold))
             .foregroundColor(AppTheme.primary)
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
+            .frame(height: 54)
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(AppTheme.primary, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(AppTheme.primary, lineWidth: 1.5)
             )
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)

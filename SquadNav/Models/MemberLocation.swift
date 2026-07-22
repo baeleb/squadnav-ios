@@ -32,14 +32,15 @@ enum DriverStatus: String, Codable {
         }
     }
 
+    // Flock palette — status color, independent of member identity color (see AppTheme.memberColor).
     var colorHex: String {
         switch self {
-        case .onRoute: return "34C759"
-        case .offRoute: return "FF3B30"
-        case .behind: return "FF9500"
-        case .stopped: return "FFCC00"
-        case .idle: return "8E8E93"
-        case .rerouting: return "0A84FF"
+        case .onRoute: return "4E9A9B"
+        case .offRoute: return "E2603A"
+        case .behind: return "D9642F"
+        case .stopped: return "D2A03D"
+        case .idle: return "B3A48C"
+        case .rerouting: return "F2894C"
         }
     }
 }

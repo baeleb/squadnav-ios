@@ -19,35 +19,35 @@ struct JoinGroupView: View {
                     }
                     Spacer()
                     Text("Join Caravan")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(AppFont.fredoka(20, .semibold))
+                        .foregroundColor(AppTheme.textPrimary)
                     Spacer()
                     Color.clear.frame(width: 28)
                 }
 
                 // Illustration
                 ZStack {
-                    Circle()
-                        .fill(AppTheme.accent.opacity(0.1))
-                        .frame(width: 80, height: 80)
-                        .blur(radius: 20)
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(AppTheme.accent)
+                        .frame(width: 64, height: 64)
+                        .shadow(color: AppTheme.accent.opacity(0.3), radius: 12, y: 6)
 
                     Image(systemName: "person.badge.plus")
-                        .font(.system(size: 56))
-                        .foregroundStyle(AppTheme.primaryGradient)
+                        .font(.system(size: 26, weight: .bold))
+                        .foregroundColor(.white)
                 }
 
                 // Invite code input
                 VStack(spacing: 20) {
                     Text("Enter the 6-character invite code")
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .font(AppFont.nunito(15, .semibold))
                         .foregroundColor(AppTheme.textSecondary)
 
                     // Code input
                     TextField("", text: $inviteCode, prompt: Text("ABC123")
                         .foregroundColor(AppTheme.textMuted))
                         .font(.system(size: 32, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.textPrimary)
                         .multilineTextAlignment(.center)
                         .tracking(8)
                         .autocapitalization(.allCharacters)
@@ -59,8 +59,8 @@ struct JoinGroupView: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16)
                                         .stroke(
-                                            inviteCode.count == 6 ? AppTheme.success : Color.white.opacity(0.08),
-                                            lineWidth: inviteCode.count == 6 ? 2 : 1
+                                            inviteCode.count == 6 ? AppTheme.success : AppTheme.border,
+                                            lineWidth: inviteCode.count == 6 ? 2 : 1.5
                                         )
                                 )
                         )
@@ -117,7 +117,7 @@ struct JoinGroupView: View {
             .padding(.bottom, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(AppTheme.backgroundGradient.ignoresSafeArea())
+        .background(AppTheme.backgroundDark.ignoresSafeArea())
         .presentationDetents([.height(520), .large])
         .presentationDragIndicator(.visible)
         .onAppear {

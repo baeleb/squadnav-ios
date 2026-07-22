@@ -26,22 +26,18 @@ struct MessageBubbleView: View {
             VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 4) {
                 if !isCurrentUser {
                     Text(message.senderName)
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(AppTheme.primary)
+                        .font(AppFont.nunito(11, .bold))
+                        .foregroundColor(AppTheme.memberColor(for: message.senderId))
                 }
 
                 Text(message.text)
-                    .font(.system(size: 15, design: .rounded))
-                    .foregroundColor(.white)
+                    .font(AppFont.nunito(15))
+                    .foregroundColor(isCurrentUser ? .white : AppTheme.textPrimary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(
                         BubbleShape(isCurrentUser: isCurrentUser)
-                            .fill(
-                                isCurrentUser
-                                    ? AnyShapeStyle(AppTheme.primaryGradient)
-                                    : AnyShapeStyle(AppTheme.backgroundElevated)
-                            )
+                            .fill(isCurrentUser ? AnyShapeStyle(AppTheme.primary) : AnyShapeStyle(AppTheme.backgroundCard))
                     )
 
                 Text(message.timestamp.chatTimestamp)
@@ -59,12 +55,12 @@ struct MessageBubbleView: View {
         HStack {
             Spacer()
             Text(message.text)
-                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .font(AppFont.nunito(12, .semibold))
                 .foregroundColor(AppTheme.textSecondary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 6)
                 .background(
-                    Capsule().fill(AppTheme.backgroundCard.opacity(0.5))
+                    Capsule().fill(AppTheme.backgroundCard)
                 )
             Spacer()
         }
@@ -73,24 +69,27 @@ struct MessageBubbleView: View {
     // MARK: - Alert Message
 
     private var alertMessage: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(AppTheme.warning)
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(AppTheme.warning.opacity(0.15))
+                    .frame(width: 38, height: 38)
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 15))
+                    .foregroundColor(AppTheme.warning)
+            }
 
             Text(message.text)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
+                .font(AppFont.nunito(13, .bold))
+                .foregroundColor(AppTheme.textPrimary)
 
             Spacer()
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(AppTheme.warning.opacity(0.15))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(AppTheme.warning.opacity(0.3), lineWidth: 1)
-                )
+            RoundedRectangle(cornerRadius: 16)
+                .fill(AppTheme.backgroundCard)
+                .shadow(color: AppTheme.shadowColor.opacity(0.06), radius: 8, x: 0, y: 2)
         )
     }
 }

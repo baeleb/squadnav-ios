@@ -91,7 +91,7 @@ extension CarPlayMapController: MKMapViewDelegate {
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         if let polyline = overlay as? MKPolyline {
             let renderer = MKPolylineRenderer(polyline: polyline)
-            renderer.strokeColor = UIColor(red: 108/255, green: 99/255, blue: 255/255, alpha: 1.0) // AppTheme.primary
+            renderer.strokeColor = UIColor(red: 217/255, green: 100/255, blue: 47/255, alpha: 1.0) // AppTheme.primary (D9642F)
             renderer.lineWidth = 6
             renderer.lineCap = .round
             renderer.lineJoin = .round
