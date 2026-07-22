@@ -12,7 +12,7 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.backgroundGradient
+                AppTheme.backgroundDark
                     .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
@@ -64,12 +64,12 @@ struct HomeView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Welcome back,")
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(AppFont.nunito(15, .semibold))
                     .foregroundColor(AppTheme.textSecondary)
 
                 Text(authViewModel.currentUser?.displayName ?? "Driver")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .font(AppFont.fredoka(26, .semibold))
+                    .foregroundColor(AppTheme.textPrimary)
             }
 
             Spacer()
@@ -82,15 +82,12 @@ struct HomeView: View {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(AppTheme.backgroundElevated)
+                        .fill(AppTheme.primary)
                         .frame(width: 48, height: 48)
-                        .overlay(
-                            Circle().stroke(Color.white.opacity(0.1), lineWidth: 1)
-                        )
 
                     Text(authViewModel.currentUser?.initials ?? "?")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundColor(AppTheme.primary)
+                        .font(AppFont.nunito(18, .extraBold))
+                        .foregroundColor(.white)
                 }
             }
         }
@@ -106,16 +103,16 @@ struct HomeView: View {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 22))
-                    Text("Create Group")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.system(size: 20))
+                    Text("Create Squad")
+                        .font(AppFont.nunito(15, .extraBold))
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 56)
+                .frame(height: 54)
                 .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(AppTheme.primaryGradient)
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(AppTheme.primary)
                 )
             }
 
@@ -124,16 +121,16 @@ struct HomeView: View {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "person.badge.plus")
-                        .font(.system(size: 22))
-                    Text("Join Group")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.system(size: 20))
+                    Text("Join Squad")
+                        .font(AppFont.nunito(15, .extraBold))
                 }
                 .foregroundColor(AppTheme.primary)
                 .frame(maxWidth: .infinity)
-                .frame(height: 56)
+                .frame(height: 54)
                 .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(AppTheme.primary, lineWidth: 2)
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(AppTheme.primary, lineWidth: 1.5)
                 )
             }
         }
@@ -144,8 +141,8 @@ struct HomeView: View {
     private var groupsList: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Your Caravans")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .font(AppFont.fredoka(20, .semibold))
+                .foregroundColor(AppTheme.textPrimary)
 
             if groupViewModel.groupService.userGroups.isEmpty {
                 emptyState
@@ -169,15 +166,15 @@ struct HomeView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "car.2.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(AppTheme.primaryGradient)
+                .font(.system(size: 44))
+                .foregroundColor(AppTheme.primary)
 
             Text("No caravans yet")
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
+                .font(AppFont.nunito(18, .bold))
+                .foregroundColor(AppTheme.textPrimary)
 
-            Text("Create a group or join one with an invite code to get started.")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
+            Text("Create a squad or join one with an invite code to get started.")
+                .font(AppFont.nunito(14, .semibold))
                 .foregroundColor(AppTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -199,24 +196,18 @@ struct GroupCardView: View {
                 // Icon
                 ZStack {
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(
-                            LinearGradient(
-                                colors: [AppTheme.primary.opacity(0.3), AppTheme.accent.opacity(0.2)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(AppTheme.backgroundElevated)
                         .frame(width: 56, height: 56)
 
                     Image(systemName: "car.side.fill")
-                        .font(.system(size: 24))
+                        .font(.system(size: 22))
                         .foregroundColor(AppTheme.primary)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(group.name)
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(AppFont.nunito(17, .bold))
+                        .foregroundColor(AppTheme.textPrimary)
 
                     HStack(spacing: 6) {
                         Image(systemName: "ticket.fill")

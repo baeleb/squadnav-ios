@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-SquadNav is an iOS 17+ SwiftUI app (Swift 5.9, iPhone-only, dark mode forced) for group "caravan" navigation: a leader sets a shared destination, every member gets the same turn-by-turn route, live member locations and statuses are synced through Firestore, and each group has chat and file sharing. Backed by Firebase (Auth, Firestore, Storage) with CarPlay support. There are no tests or linters configured.
+SquadNav is an iOS 17+ SwiftUI app (Swift 5.9, iPhone-only, follows system light/dark appearance) for group "caravan" navigation: a leader sets a shared destination, every member gets the same turn-by-turn route, live member locations and statuses are synced through Firestore, and each group has chat and file sharing. Backed by Firebase (Auth, Firestore, Storage) with CarPlay support. There are no tests or linters configured.
 
 GitHub repo: `baeleb/squadnav-ios`, default branch `main`.
 

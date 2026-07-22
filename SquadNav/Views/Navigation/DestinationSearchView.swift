@@ -10,7 +10,7 @@ struct DestinationSearchView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.backgroundGradient
+            AppTheme.backgroundDark
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -22,9 +22,9 @@ struct DestinationSearchView: View {
                             .foregroundColor(AppTheme.textMuted)
                     }
                     Spacer()
-                    Text("Set Destination")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                    Text("Where to?")
+                        .font(AppFont.fredoka(20, .semibold))
+                        .foregroundColor(AppTheme.textPrimary)
                     Spacer()
                     Color.clear.frame(width: 28)
                 }
@@ -38,8 +38,8 @@ struct DestinationSearchView: View {
                         .foregroundColor(AppTheme.textMuted)
 
                     TextField("Search for a place...", text: $searchText)
-                        .font(.system(size: 16, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(AppFont.nunito(16))
+                        .foregroundColor(AppTheme.textPrimary)
                         .autocorrectionDisabled()
 
                     if !searchText.isEmpty {
@@ -64,7 +64,7 @@ struct DestinationSearchView: View {
                         .fill(AppTheme.backgroundInput)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                .stroke(AppTheme.border, lineWidth: 1.5)
                         )
                 )
                 .padding(.horizontal, 20)
@@ -112,8 +112,8 @@ struct DestinationSearchView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(mapItem.name ?? "Unknown")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(AppFont.nunito(15, .bold))
+                        .foregroundColor(AppTheme.textPrimary)
 
                     if let address = mapItem.placemark.formattedAddress {
                         Text(address)
@@ -131,11 +131,11 @@ struct DestinationSearchView: View {
             }
             .padding(12)
             .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(AppTheme.backgroundCard.opacity(0.4))
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(AppTheme.backgroundCard)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(AppTheme.border, lineWidth: 1)
                     )
             )
         }

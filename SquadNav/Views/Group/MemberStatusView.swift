@@ -16,47 +16,36 @@ struct MemberStatusView: View {
     }
 
     private func memberCard(member: MemberLocation) -> some View {
-        HStack(spacing: 14) {
-            // Avatar
+        let identityColor = AppTheme.memberColor(for: member.id ?? member.displayName)
+        let statusColor = Color(hex: member.status.colorHex)
+
+        return HStack(spacing: 14) {
+            // Avatar — flat, unique color per member identity
             ZStack {
                 Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: member.isLeader
-                                ? [AppTheme.accent, AppTheme.primary]
-                                : [AppTheme.backgroundElevated, AppTheme.backgroundCard],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(identityColor)
                     .frame(width: 48, height: 48)
 
-                if member.isLeader {
-                    Image(systemName: "crown.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.white)
-                } else {
-                    Text(memberInitials(member.displayName))
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                }
+                Text(memberInitials(member.displayName))
+                    .font(AppFont.nunito(16, .extraBold))
+                    .foregroundColor(.white)
             }
 
             // Info
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(member.displayName)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(AppFont.nunito(16, .bold))
+                        .foregroundColor(AppTheme.textPrimary)
 
                     if member.isLeader {
                         Text("LEADER")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(AppTheme.accent)
+                            .foregroundColor(AppTheme.primary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(
-                                Capsule().fill(AppTheme.accent.opacity(0.2))
+                                Capsule().fill(AppTheme.primary.opacity(0.15))
                             )
                     }
                 }
@@ -69,7 +58,7 @@ struct MemberStatusView: View {
                         Text(member.status.displayLabel)
                             .font(.system(size: 11, weight: .semibold))
                     }
-                    .foregroundColor(Color(hex: member.status.colorHex))
+                    .foregroundColor(statusColor)
 
                     // Speed
                     if member.speed > 0 {
@@ -92,20 +81,23 @@ struct MemberStatusView: View {
 
             Spacer()
 
-            // Status indicator dot
-            Circle()
-                .fill(Color(hex: member.status.colorHex))
-                .frame(width: 12, height: 12)
-                .shadow(color: Color(hex: member.status.colorHex).opacity(0.5), radius: 4)
+            // Status pill
+            Text(member.status.displayLabel)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(statusColor)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(statusColor.opacity(0.15)))
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(AppTheme.backgroundCard.opacity(0.5))
+                .fill(AppTheme.backgroundCard)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color(hex: member.status.colorHex).opacity(0.2), lineWidth: 1)
+                        .stroke(AppTheme.border, lineWidth: 1)
                 )
+                .shadow(color: AppTheme.shadowColor.opacity(0.06), radius: 8, x: 0, y: 2)
         )
     }
 

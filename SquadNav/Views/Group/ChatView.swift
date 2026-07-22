@@ -50,8 +50,8 @@ struct ChatView: View {
         HStack(spacing: 12) {
             TextField("Message", text: $viewModel.messageText, axis: .vertical)
                 .textFieldStyle(.plain)
-                .font(.system(size: 16, design: .rounded))
-                .foregroundColor(.white)
+                .font(AppFont.nunito(16))
+                .foregroundColor(AppTheme.textPrimary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .lineLimit(1...5)
@@ -60,7 +60,7 @@ struct ChatView: View {
                         .fill(AppTheme.backgroundInput)
                         .overlay(
                             RoundedRectangle(cornerRadius: 24)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                .stroke(AppTheme.border, lineWidth: 1.5)
                         )
                 )
                 .focused($isInputFocused)
@@ -87,7 +87,7 @@ struct ChatView: View {
             AppTheme.backgroundCard
                 .overlay(
                     Rectangle()
-                        .fill(Color.white.opacity(0.05))
+                        .fill(AppTheme.border)
                         .frame(height: 1),
                     alignment: .top
                 )

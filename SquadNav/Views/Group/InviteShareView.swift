@@ -12,21 +12,21 @@ struct InviteShareView: View {
             // Invite Code
             VStack(spacing: 8) {
                 Text("Share this code with your drivers")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .font(AppFont.nunito(14, .semibold))
                     .foregroundColor(AppTheme.textSecondary)
 
                 Text(group.inviteCode)
-                    .font(.system(size: 36, weight: .bold, design: .monospaced))
+                    .font(AppFont.fredoka(32, .semibold))
                     .foregroundColor(AppTheme.primary)
-                    .tracking(8)
-                    .padding(.vertical, 12)
+                    .tracking(6)
+                    .padding(.vertical, 14)
                     .frame(maxWidth: .infinity)
                     .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(AppTheme.primary.opacity(0.1))
+                        RoundedRectangle(cornerRadius: 18)
+                            .fill(AppTheme.backgroundCard)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(AppTheme.primary.opacity(0.3), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 18)
+                                    .strokeBorder(AppTheme.primary, style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
                             )
                     )
             }
@@ -36,7 +36,7 @@ struct InviteShareView: View {
                let uiImage = UIImage(data: qrData) {
                 VStack(spacing: 8) {
                     Text("or scan QR code")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(AppFont.nunito(14, .semibold))
                         .foregroundColor(AppTheme.textSecondary)
 
                     Image(uiImage: uiImage)
@@ -62,13 +62,13 @@ struct InviteShareView: View {
                     Image(systemName: "square.and.arrow.up")
                     Text("Share Invite")
                 }
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .font(AppFont.nunito(16, .extraBold))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 56)
+                .frame(height: 54)
                 .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(AppTheme.primaryGradient)
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(AppTheme.primary)
                 )
             }
         }
