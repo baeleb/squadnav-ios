@@ -48,6 +48,7 @@ targets:
       - sdk: MapKit.framework
       - sdk: CoreLocation.framework
       - sdk: AuthenticationServices.framework
+      - target: SquadNavLiveActivity
     settings:
       base:
         INFOPLIST_FILE: SquadNav/Resources/Info.plist
@@ -58,6 +59,7 @@ targets:
       properties:
         CFBundleDisplayName: SquadNav
         CFBundleName: SquadNav
+        NSSupportsLiveActivities: true
         # Google Sign-In SDK v8 crashes without GIDClientID in Info.plist
         # (matches CLIENT_ID in GoogleService-Info.plist)
         GIDClientID: "197592495387-d3j3v3cv0r6cj77b9sq90dcer1mvkpg1.apps.googleusercontent.com"
@@ -87,6 +89,34 @@ targets:
         com.apple.developer.applesignin: ["Default"]
         aps-environment: development
 
+  SquadNavLiveActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: SquadNavLiveActivity
+      - path: SquadNav/Utilities/NavigationActivityAttributes.swift
+      - path: SquadNav/Utilities/ManeuverIcon.swift
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: ActivityKit.framework
+    settings:
+      base:
+        INFOPLIST_FILE: SquadNavLiveActivity/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SquadNavLiveActivity/Resources/SquadNavLiveActivity.entitlements
+        # App extension bundle IDs must be prefixed by the containing app's
+        # bundle ID plus a dot, or simctl/install rejects the embed.
+        PRODUCT_BUNDLE_IDENTIFIER: com.squadnav.SquadNav.LiveActivity
+    info:
+      path: SquadNavLiveActivity/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: SquadNav Navigation
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: SquadNavLiveActivity/Resources/SquadNavLiveActivity.entitlements
+      properties: {}
+
   SquadNavTests:
     type: bundle.unit-test
     platform: iOS
@@ -110,6 +140,9 @@ targets:
       - path: SquadNav/Services/AuthService.swift
       - path: SquadNav/Services/LocationService.swift
       - path: SquadNav/ViewModels/NavigationViewModel.swift
+      - path: SquadNav/Services/LiveActivityService.swift
+      - path: SquadNav/Utilities/NavigationActivityAttributes.swift
+      - path: SquadNav/Utilities/ManeuverIcon.swift
     resources:
       # Copy in SquadNavTests/ — xcodegen dedupes a path that is also inside
       # the app target's sources, dropping the test target's Resources phase.

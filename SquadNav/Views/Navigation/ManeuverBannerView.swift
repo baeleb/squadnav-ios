@@ -148,28 +148,6 @@ struct ManeuverBannerView: View {
     // MARK: - Icon Helper
 
     private var maneuverIcon: String {
-        let instruction = navigationState.currentInstruction.lowercased()
-
-        if instruction.contains("right") && instruction.contains("slight") {
-            return "arrow.turn.up.right"
-        } else if instruction.contains("right") {
-            return "arrow.turn.up.right"
-        } else if instruction.contains("left") && instruction.contains("slight") {
-            return "arrow.turn.up.left"
-        } else if instruction.contains("left") {
-            return "arrow.turn.up.left"
-        } else if instruction.contains("u-turn") || instruction.contains("u turn") {
-            return "arrow.uturn.down"
-        } else if instruction.contains("merge") {
-            return "arrow.merge"
-        } else if instruction.contains("exit") || instruction.contains("ramp") {
-            return "arrow.up.right"
-        } else if instruction.contains("straight") || instruction.contains("continue") {
-            return "arrow.up"
-        } else if instruction.contains("arrive") || instruction.contains("destination") {
-            return "flag.checkered"
-        } else {
-            return "arrow.up"
-        }
+        ManeuverIcon.symbolName(for: navigationState.currentInstruction)
     }
 }

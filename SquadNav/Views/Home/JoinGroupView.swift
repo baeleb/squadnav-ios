@@ -8,28 +8,28 @@ struct JoinGroupView: View {
     @State private var inviteCode = ""
 
     var body: some View {
-        VStack(spacing: 24) {
-            // Header
-            HStack {
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundColor(AppTheme.textMuted)
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 16) {
+                // Header
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(AppTheme.textMuted)
+                    }
+                    Spacer()
+                    Text("Join Caravan")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Color.clear.frame(width: 28)
                 }
-                Spacer()
-                Text("Join Caravan")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                Spacer()
-                Color.clear.frame(width: 28)
-            }
-            .padding(.top, 20)
 
                 // Illustration
                 ZStack {
                     Circle()
                         .fill(AppTheme.accent.opacity(0.1))
-                        .frame(width: 120, height: 120)
+                        .frame(width: 80, height: 80)
                         .blur(radius: 20)
 
                     Image(systemName: "person.badge.plus")
@@ -87,7 +87,7 @@ struct JoinGroupView: View {
                             .transition(.opacity)
                     }
                 }
-                .padding(24)
+                .padding(20)
                 .glassCard()
 
                 // Join button
@@ -111,13 +111,15 @@ struct JoinGroupView: View {
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(inviteCode.count != 6 || groupViewModel.isJoining)
                 .opacity(inviteCode.count == 6 ? 1.0 : 0.5)
-                .padding(.horizontal, 20)
-
-            Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
-        .padding(.horizontal, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(AppTheme.backgroundGradient.ignoresSafeArea())
+        .presentationDetents([.height(520), .large])
+        .presentationDragIndicator(.visible)
         .onAppear {
             if let prefilledCode {
                 inviteCode = String(prefilledCode.prefix(6)).uppercased()

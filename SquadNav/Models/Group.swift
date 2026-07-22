@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseFirestore
+import CoreLocation
 
 struct Group: Identifiable, Codable, Equatable, Hashable {
     @DocumentID var id: String?
@@ -24,6 +25,11 @@ struct Group: Identifiable, Codable, Equatable, Hashable {
 
     var hasDestination: Bool {
         destinationLatitude != nil && destinationLongitude != nil
+    }
+
+    var destinationCoordinate: CLLocationCoordinate2D? {
+        guard let destinationLatitude, let destinationLongitude else { return nil }
+        return CLLocationCoordinate2D(latitude: destinationLatitude, longitude: destinationLongitude)
     }
 
     init(

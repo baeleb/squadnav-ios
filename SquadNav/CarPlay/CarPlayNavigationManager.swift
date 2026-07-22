@@ -133,25 +133,7 @@ class CarPlayNavigationManager {
     }
 
     private func maneuverSymbolImage(for instruction: String) -> UIImage? {
-        let lower = instruction.lowercased()
-
-        let symbolName: String
-        if lower.contains("right") {
-            symbolName = "arrow.turn.up.right"
-        } else if lower.contains("left") {
-            symbolName = "arrow.turn.up.left"
-        } else if lower.contains("u-turn") || lower.contains("u turn") {
-            symbolName = "arrow.uturn.down"
-        } else if lower.contains("merge") {
-            symbolName = "arrow.merge"
-        } else if lower.contains("exit") || lower.contains("ramp") {
-            symbolName = "arrow.up.right"
-        } else if lower.contains("arrive") || lower.contains("destination") {
-            symbolName = "flag.checkered"
-        } else {
-            symbolName = "arrow.up"
-        }
-
+        let symbolName = ManeuverIcon.symbolName(for: instruction)
         return UIImage(systemName: symbolName)?
             .withConfiguration(UIImage.SymbolConfiguration(pointSize: 24, weight: .bold))
     }
