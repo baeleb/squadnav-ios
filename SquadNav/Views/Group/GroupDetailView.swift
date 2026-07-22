@@ -152,9 +152,10 @@ struct GroupDetailView: View {
             groupViewModel.deselectGroup()
         }
         .onChange(of: groupViewModel.groupService.activeGroup?.isNavigating) { _, isNavigating in
-            // Keep non-leader members in sync with the leader's navigation state.
-            guard !groupViewModel.isLeader else { return }
+            // Keep everyone in sync, including a new leader who took over
+            // mid-navigation: they need to join just like any other member.
             if isNavigating == true {
+                guard !navigationVM.showNavigation else { return }
                 Task { await navigationVM.joinNavigation() }
             } else if navigationVM.showNavigation {
                 navigationVM.endNavigationLocally()

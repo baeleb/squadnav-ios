@@ -17,6 +17,7 @@ class NavigationViewModel: ObservableObject {
     let groupService: GroupService
     let chatService: ChatService
     let caravanMonitor: CaravanMonitorService
+    let liveActivityService: LiveActivityService
 
     // Internal (not private) purely as a test seam for SquadNavTests.
     var monitorTimer: Timer?
@@ -31,6 +32,7 @@ class NavigationViewModel: ObservableObject {
         self.groupService = groupService
         self.chatService = chatService
         self.caravanMonitor = CaravanMonitorService(groupService: groupService, chatService: chatService)
+        self.liveActivityService = LiveActivityService(navigationService: navigationService)
         setupCallbacks()
 
         // Forward nested service changes so views observing this view model update.
@@ -63,7 +65,14 @@ class NavigationViewModel: ObservableObject {
                 guard let self,
                       let groupId = self.groupService.activeGroup?.id else { return }
 
-                let status: DriverStatus = self.navigationService.navigationState.isOffRoute ? .offRoute : .onRoute
+                let status: DriverStatus
+                if self.navigationService.isConverging {
+                    // Connector legs are far from the shared route by design;
+                    // .rerouting tells the leader's monitor not to flag it.
+                    status = .rerouting
+                } else {
+                    status = self.navigationService.navigationState.isOffRoute ? .offRoute : .onRoute
+                }
                 try? await self.groupService.updateMemberLocation(
                     groupId: groupId,
                     latitude: location.coordinate.latitude,
@@ -101,6 +110,16 @@ class NavigationViewModel: ObservableObject {
                     groupId: groupId,
                     text: "🏁 \(userName) has arrived at the destination!"
                 )
+                let arrivedState = NavigationActivityAttributes.ContentState(
+                    instruction: "You've arrived",
+                    nextInstruction: nil,
+                    maneuverIconName: "flag.checkered",
+                    distanceToManeuverMeters: 0,
+                    distanceRemainingMeters: 0,
+                    etaSeconds: 0,
+                    isRerouting: false
+                )
+                await self.liveActivityService.endActivity(finalState: arrivedState)
             }
         }
     }
@@ -182,12 +201,30 @@ class NavigationViewModel: ObservableObject {
     }
 
     func startNavigation() async {
-        guard let groupId = groupService.activeGroup?.id else { return }
+        guard let groupId = groupService.activeGroup?.id,
+              let group = groupService.activeGroup else { return }
+
+        // After a leader switch, this leader's local route is empty (the
+        // original leader's setDestinationAndCalculateRoute populated it on
+        // their device only). Load from the group's stored polyline first.
+        if navigationService.routePolylineCoordinates.isEmpty,
+           let polyline = group.routePolyline, !polyline.isEmpty,
+           let lat = group.destinationLatitude, let lng = group.destinationLongitude {
+            let destination = CLLocationCoordinate2D(latitude: lat, longitude: lng)
+            do {
+                try await navigationService.setRouteFromPolyline(polyline, destination: destination)
+            } catch {
+                self.error = error.localizedDescription
+            }
+        }
 
         locationService.startTracking()
         navigationService.startNavigation()
         caravanMonitor.setRoute(coordinates: navigationService.routePolylineCoordinates)
         showNavigation = true
+        liveActivityService.startActivity(
+            destinationName: groupService.activeGroup?.destinationName ?? selectedDestination?.name ?? "Destination"
+        )
 
         do {
             try await groupService.startNavigation(groupId: groupId)
@@ -208,6 +245,7 @@ class NavigationViewModel: ObservableObject {
         navigationService.stopNavigation()
         showNavigation = false
         stopCaravanMonitoring()
+        Task { await liveActivityService.endActivity() }
 
         // Only the leader ends navigation for the whole group; a member
         // stopping locally must not flip the shared flag for everyone.
@@ -232,7 +270,11 @@ class NavigationViewModel: ObservableObject {
 
         do {
             if let polyline = group.routePolyline, !polyline.isEmpty {
-                try await navigationService.setRouteFromPolyline(polyline, destination: destination)
+                try await navigationService.setRouteFromPolyline(
+                    polyline,
+                    destination: destination,
+                    from: locationService.currentLocation?.coordinate
+                )
             } else if let location = locationService.currentLocation {
                 let route = try await navigationService.calculateRoute(
                     from: location.coordinate,
@@ -247,8 +289,14 @@ class NavigationViewModel: ObservableObject {
             navigationService.startNavigation()
             caravanMonitor.setRoute(coordinates: navigationService.routePolylineCoordinates)
             showNavigation = true
-            // Note: only the leader runs the caravan monitor timer, so
-            // alerts aren't duplicated by every member.
+            liveActivityService.startActivity(
+                destinationName: groupService.activeGroup?.destinationName ?? "Destination"
+            )
+            // Only one leader runs the monitor; this covers a new leader
+            // joining mid-navigation after a switch.
+            if isLeader {
+                startCaravanMonitoring()
+            }
         } catch {
             self.error = error.localizedDescription
         }
@@ -260,21 +308,39 @@ class NavigationViewModel: ObservableObject {
         navigationService.stopNavigation()
         stopCaravanMonitoring()
         showNavigation = false
+        Task { await liveActivityService.endActivity() }
     }
 
     private func reroute() async {
-        guard let location = locationService.currentLocation,
-              let destination = selectedDestination?.placemark.coordinate else { return }
+        guard let location = locationService.currentLocation else { return }
 
-        do {
-            let route = try await navigationService.calculateRoute(
-                from: location.coordinate,
-                to: destination
-            )
-            navigationService.setRoute(route)
-            navigationService.startNavigation()
-        } catch {
-            self.error = "Rerouting failed: \(error.localizedDescription)"
+        if isLeader {
+            // Leader recalculates directly; selectedDestination is nil on
+            // any device but the one that picked it, so fall back to the
+            // group's Firestore destination.
+            guard let destination = selectedDestination?.placemark.coordinate
+                    ?? groupService.activeGroup?.destinationCoordinate else { return }
+            do {
+                let route = try await navigationService.calculateRoute(
+                    from: location.coordinate,
+                    to: destination
+                )
+                navigationService.setRoute(route)
+                navigationService.startNavigation()
+            } catch {
+                self.error = "Rerouting failed: \(error.localizedDescription)"
+            }
+        } else {
+            // Members converge back onto the shared route, unchanged for all.
+            guard let destination = groupService.activeGroup?.destinationCoordinate else { return }
+            do {
+                try await navigationService.rerouteToSharedRoute(
+                    from: location.coordinate,
+                    destination: destination
+                )
+            } catch {
+                self.error = "Rerouting failed: \(error.localizedDescription)"
+            }
         }
     }
 

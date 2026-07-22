@@ -97,10 +97,14 @@ class CaravanMonitorService: ObservableObject {
 
         let memberLocation = CLLocation(latitude: member.latitude, longitude: member.longitude)
 
-        // 1. Check if off-route
-        let distanceToRoute = calculateDistanceToRoute(location: memberLocation)
-        if distanceToRoute > offRouteThreshold {
-            return .offRoute
+        // 1. Check if off-route. A member self-reporting .rerouting is on a
+        // connector leg back to the shared route — far from it by design —
+        // so skip the off-route check (stopped/behind still apply).
+        if member.status != .rerouting {
+            let distanceToRoute = calculateDistanceToRoute(location: memberLocation)
+            if distanceToRoute > offRouteThreshold {
+                return .offRoute
+            }
         }
 
         // 2. Check if stopped. CLLocation.speed is -1 when invalid —

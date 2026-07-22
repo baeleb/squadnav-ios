@@ -14,6 +14,8 @@ struct NavigationState: Equatable {
 
     var phase: Phase = .idle
     var route: MKRoute?
+    // Shared-route remainder, swapped in when a connector leg completes.
+    var followUpRoute: MKRoute?
     var steps: [MKRoute.Step] = []
     var currentStepIndex: Int = 0
     var distanceToNextManeuver: CLLocationDistance = 0

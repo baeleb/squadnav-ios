@@ -8,6 +8,13 @@ class NavigationService: ObservableObject {
     @Published var navigationState = NavigationState()
     @Published var routePolylineCoordinates: [CLLocationCoordinate2D] = []
 
+    // Canonical shared route members converge onto; routePolylineCoordinates
+    // is this member's active path (connector + shared remainder).
+    private(set) var sharedRouteCoordinates: [CLLocationCoordinate2D] = []
+
+    // True while on a connector leg; the uploader reports .rerouting then.
+    var isConverging: Bool { navigationState.followUpRoute != nil }
+
     // Off-route detection
     private let offRouteThreshold: CLLocationDistance = 75  // meters
     private let offRouteTimeThreshold: TimeInterval = 5     // seconds
@@ -49,30 +56,141 @@ class NavigationService: ObservableObject {
     /// Sets the active route and prepares for navigation.
     func setRoute(_ route: MKRoute) {
         navigationState.route = route
+        navigationState.followUpRoute = nil
         navigationState.steps = route.steps.filter { !$0.instructions.isEmpty }
         navigationState.currentStepIndex = 0
         navigationState.totalDistanceRemaining = route.distance
         navigationState.estimatedTimeRemaining = route.expectedTravelTime
+        estimatedPolylineIndex = 0
 
         // Extract polyline coordinates
         let pointCount = route.polyline.pointCount
         var coords = [CLLocationCoordinate2D](repeating: CLLocationCoordinate2D(), count: pointCount)
         route.polyline.getCoordinates(&coords, range: NSRange(location: 0, length: pointCount))
         routePolylineCoordinates = coords
+        sharedRouteCoordinates = coords
     }
 
     /// Sets route from an encoded polyline string (for non-leader drivers).
-    func setRouteFromPolyline(_ encodedPolyline: String, destination: CLLocationCoordinate2D) async throws {
+    /// Members away from the shared route get a converging route instead of
+    /// steps computed from the leader's start point.
+    func setRouteFromPolyline(
+        _ encodedPolyline: String,
+        destination: CLLocationCoordinate2D,
+        from memberLocation: CLLocationCoordinate2D? = nil
+    ) async throws {
         let coordinates = RouteEncoder.decode(polyline: encodedPolyline)
-        routePolylineCoordinates = coordinates
+        sharedRouteCoordinates = coordinates
 
-        // Still need to calculate the actual MKRoute for step data
         guard let firstCoord = coordinates.first else {
             throw NavigationError.noRouteFound
         }
 
+        if let memberLocation {
+            try await setConvergingRoute(
+                from: memberLocation,
+                destination: destination,
+                searchFromIndex: 0
+            )
+            return
+        }
+
+        // No member location: assume they are at the route start (leader path).
         let route = try await calculateRoute(from: firstCoord, to: destination)
         setRoute(route)
+        sharedRouteCoordinates = routePolylineCoordinates
+    }
+
+    /// Reconnects to the canonical shared route after going off-route.
+    /// Local-only: the shared route in Firestore is never touched.
+    func rerouteToSharedRoute(
+        from memberLocation: CLLocationCoordinate2D,
+        destination: CLLocationCoordinate2D
+    ) async throws {
+        guard !sharedRouteCoordinates.isEmpty else {
+            throw NavigationError.noRouteFound
+        }
+        try await setConvergingRoute(
+            from: memberLocation,
+            destination: destination,
+            searchFromIndex: estimatedPolylineIndex
+        )
+        navigationState.isOffRoute = false
+        navigationState.phase = .navigating
+        offRouteStartTime = nil
+    }
+
+    /// Builds the active route as connector (member → nearest shared point
+    /// at/after searchFromIndex) + shared remainder held in `followUpRoute`
+    /// and swapped in when the connector completes.
+    private func setConvergingRoute(
+        from memberLocation: CLLocationCoordinate2D,
+        destination: CLLocationCoordinate2D,
+        searchFromIndex: Int
+    ) async throws {
+        let joinIndex = nearestPolylineIndex(
+            to: memberLocation,
+            in: sharedRouteCoordinates,
+            from: searchFromIndex
+        )
+        let joinPoint = sharedRouteCoordinates[joinIndex]
+        let sharedRemainder = Array(sharedRouteCoordinates[joinIndex...])
+
+        let memberLoc = CLLocation(latitude: memberLocation.latitude, longitude: memberLocation.longitude)
+        let joinLoc = CLLocation(latitude: joinPoint.latitude, longitude: joinPoint.longitude)
+
+        let remainderRoute = try await calculateRoute(from: joinPoint, to: destination)
+
+        // Already essentially on the shared route: follow the remainder
+        // directly, no connector leg.
+        guard memberLoc.distance(from: joinLoc) > 100 else {
+            setRoute(remainderRoute)
+            routePolylineCoordinates = sharedRemainder
+            return
+        }
+
+        let connectorRoute = try await calculateRoute(from: memberLocation, to: joinPoint)
+
+        navigationState.route = connectorRoute
+        navigationState.followUpRoute = remainderRoute
+        navigationState.steps = connectorRoute.steps.filter { !$0.instructions.isEmpty }
+        navigationState.currentStepIndex = 0
+        navigationState.totalDistanceRemaining = connectorRoute.distance + remainderRoute.distance
+        navigationState.estimatedTimeRemaining = connectorRoute.expectedTravelTime + remainderRoute.expectedTravelTime
+        estimatedPolylineIndex = 0
+
+        routePolylineCoordinates = polylineCoordinates(of: connectorRoute) + sharedRemainder
+    }
+
+    /// Index of the shared-polyline vertex closest to `location`, searching
+    /// only at/after `fromIndex` so reconnects converge forward, never back.
+    func nearestPolylineIndex(
+        to location: CLLocationCoordinate2D,
+        in coordinates: [CLLocationCoordinate2D],
+        from fromIndex: Int = 0
+    ) -> Int {
+        guard !coordinates.isEmpty else { return 0 }
+        let loc = CLLocation(latitude: location.latitude, longitude: location.longitude)
+        let start = max(0, min(fromIndex, coordinates.count - 1))
+
+        var bestIndex = start
+        var bestDistance: CLLocationDistance = .greatestFiniteMagnitude
+        for i in start..<coordinates.count {
+            let coord = coordinates[i]
+            let dist = loc.distance(from: CLLocation(latitude: coord.latitude, longitude: coord.longitude))
+            if dist < bestDistance {
+                bestDistance = dist
+                bestIndex = i
+            }
+        }
+        return bestIndex
+    }
+
+    private func polylineCoordinates(of route: MKRoute) -> [CLLocationCoordinate2D] {
+        let pointCount = route.polyline.pointCount
+        var coords = [CLLocationCoordinate2D](repeating: CLLocationCoordinate2D(), count: pointCount)
+        route.polyline.getCoordinates(&coords, range: NSRange(location: 0, length: pointCount))
+        return coords
     }
 
     /// Encodes the current route's polyline for sharing via Firestore.
@@ -92,9 +210,12 @@ class NavigationService: ObservableObject {
     func stopNavigation() {
         navigationState.phase = .idle
         navigationState.route = nil
+        navigationState.followUpRoute = nil
         navigationState.steps = []
         navigationState.currentStepIndex = 0
         routePolylineCoordinates = []
+        sharedRouteCoordinates = []
+        estimatedPolylineIndex = 0
         offRouteStartTime = nil
     }
 
@@ -221,8 +342,16 @@ class NavigationService: ObservableObject {
 
             // Check if arrived
             if navigationState.currentStepIndex >= navigationState.steps.count {
-                navigationState.phase = .arrived
-                onArrived?()
+                if let followUp = navigationState.followUpRoute {
+                    // Connector leg complete: continue onto the shared route.
+                    navigationState.route = followUp
+                    navigationState.steps = followUp.steps.filter { !$0.instructions.isEmpty }
+                    navigationState.currentStepIndex = 0
+                    navigationState.followUpRoute = nil
+                } else {
+                    navigationState.phase = .arrived
+                    onArrived?()
+                }
             }
         }
     }
@@ -238,8 +367,14 @@ class NavigationService: ObservableObject {
 
         if totalSteps > 0 {
             let progress = Double(completedSteps) / Double(totalSteps)
-            navigationState.totalDistanceRemaining = route.distance * (1.0 - progress)
-            navigationState.estimatedTimeRemaining = route.expectedTravelTime * (1.0 - progress)
+            var distanceRemaining = route.distance * (1.0 - progress)
+            var timeRemaining = route.expectedTravelTime * (1.0 - progress)
+            if let followUp = navigationState.followUpRoute {
+                distanceRemaining += followUp.distance
+                timeRemaining += followUp.expectedTravelTime
+            }
+            navigationState.totalDistanceRemaining = distanceRemaining
+            navigationState.estimatedTimeRemaining = timeRemaining
         }
 
         // Update polyline tracking index

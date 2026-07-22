@@ -41,6 +41,8 @@
 	<string>SquadNav needs background location access to keep tracking your position during navigation.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SquadNav needs your location to navigate and share your position with your caravan.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
