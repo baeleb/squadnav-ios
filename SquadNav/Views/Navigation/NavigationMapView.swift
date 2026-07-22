@@ -94,6 +94,11 @@ struct NavigationMapView: View {
                 .presentationBackgroundInteraction(.enabled(upThrough: .medium))
                 .presentationBackground(AppTheme.backgroundDark)
                 .interactiveDismissDisabled()
+                // The sheet presents outside the nav view's forced-dark
+                // hierarchy, so re-assert dark chrome here to match the
+                // immersive turn-by-turn screen (otherwise the pane falls
+                // back to the system appearance and renders light).
+                .colorScheme(.dark)
         }
     }
 
