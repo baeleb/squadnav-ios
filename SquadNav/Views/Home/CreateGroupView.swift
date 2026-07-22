@@ -8,36 +8,39 @@ struct CreateGroupView: View {
     @State private var qrCodeData: Data?
 
     var body: some View {
-        VStack(spacing: 24) {
-            // Header
-            HStack {
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundColor(AppTheme.textMuted)
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 16) {
+                // Header
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(AppTheme.textMuted)
+                    }
+                    Spacer()
+                    Text("New Caravan")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Color.clear.frame(width: 28)
                 }
-                Spacer()
-                Text("New Caravan")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                Spacer()
-                Color.clear.frame(width: 28)
-            }
-            .padding(.top, 20)
 
-            if groupViewModel.showCreateSuccess, let group = groupViewModel.createdGroup {
-                // Success State
-                successView(group: group)
-            } else {
-                // Create Form
-                createForm
+                if groupViewModel.showCreateSuccess, let group = groupViewModel.createdGroup {
+                    // Success State
+                    successView(group: group)
+                } else {
+                    // Create Form
+                    createForm
+                }
             }
-
-            Spacer(minLength: 0)
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
-        .padding(.horizontal, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(AppTheme.backgroundGradient.ignoresSafeArea())
+        .presentationDetents([.height(480), .large])
+        .presentationDragIndicator(.visible)
     }
 
     // MARK: - Create Form
@@ -48,7 +51,7 @@ struct CreateGroupView: View {
             ZStack {
                 Circle()
                     .fill(AppTheme.primary.opacity(0.1))
-                    .frame(width: 120, height: 120)
+                    .frame(width: 80, height: 80)
                     .blur(radius: 20)
 
                 Image(systemName: "flag.checkered.2.crossed")
@@ -106,7 +109,7 @@ struct CreateGroupView: View {
             .disabled(groupName.trimmingCharacters(in: .whitespaces).isEmpty || groupViewModel.isCreating)
             .opacity(groupName.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1.0)
         }
-        .padding(24)
+        .padding(20)
         .glassCard()
     }
 
