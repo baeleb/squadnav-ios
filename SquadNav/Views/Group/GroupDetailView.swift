@@ -348,7 +348,7 @@ struct GroupMapPreview: View {
     /// Navigation-style triangle pointing in the travel direction with the
     /// driver's first name underneath (matches NavigationMapView's style).
     private func directionalMarker(name: String, headingDegrees: Double, color: Color) -> some View {
-        VStack(spacing: 2) {
+        ZStack(alignment: .bottom) {
             Image(systemName: "location.north.fill")
                 .font(.system(size: 24))
                 .foregroundColor(color)
@@ -361,6 +361,7 @@ struct GroupMapPreview: View {
                 .padding(.horizontal, 5)
                 .padding(.vertical, 2)
                 .background(Capsule().fill(Color.black.opacity(0.7)))
+                .offset(y: 18)
         }
     }
 
