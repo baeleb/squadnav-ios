@@ -8,6 +8,7 @@ enum DriverStatus: String, Codable {
     case behind = "behind"
     case stopped = "stopped"
     case idle = "idle"
+    case rerouting = "rerouting"
 
     var displayLabel: String {
         switch self {
@@ -16,6 +17,7 @@ enum DriverStatus: String, Codable {
         case .behind: return "Behind"
         case .stopped: return "Stopped"
         case .idle: return "Idle"
+        case .rerouting: return "Rerouting"
         }
     }
 
@@ -26,6 +28,7 @@ enum DriverStatus: String, Codable {
         case .behind: return "tortoise.fill"
         case .stopped: return "pause.circle.fill"
         case .idle: return "circle.fill"
+        case .rerouting: return "arrow.triangle.turn.up.right.circle.fill"
         }
     }
 
@@ -36,6 +39,7 @@ enum DriverStatus: String, Codable {
         case .behind: return "FF9500"
         case .stopped: return "FFCC00"
         case .idle: return "8E8E93"
+        case .rerouting: return "0A84FF"
         }
     }
 }
@@ -51,12 +55,11 @@ struct MemberLocation: Identifiable, Codable, Equatable {
     // Server timestamps are null in latency-compensated local snapshots;
     // a non-optional Date would fail to decode and drop the member row.
     @ServerTimestamp var lastUpdated: Date?
-    // Server-set at member-doc creation (written explicitly as
-    // FieldValue.serverTimestamp() in createGroup/joinGroup). Used for
-    // leadership succession ("first person who joined").
-    // NOT @ServerTimestamp: that wrapper fails decode when the key is
-    // absent, silently dropping pre-field member docs from listeners.
-    var joinedAt: Date?
+    // Server-set at member-doc creation. Must be @ServerTimestamp:
+    // pending sentinels in latency-compensated snapshots fail plain
+    // Date? decode and drop the doc from compactMap listeners — which
+    // made claimLeadershipIfNeeded false-trigger.
+    @ServerTimestamp var joinedAt: Date?
     var status: DriverStatus
     var currentStepIndex: Int
 

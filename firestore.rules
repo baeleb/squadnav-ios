@@ -23,6 +23,12 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/groups/$(groupId)).data;
     }
 
+    // Post-batch state of the group doc (for batched leadership transfers,
+    // where createdBy changes in the same commit as the role demotion).
+    function groupDataAfter(groupId) {
+      return getAfter(/databases/$(database)/documents/groups/$(groupId)).data;
+    }
+
     // memberIds is optional on pre-refactor group docs — default to [].
     function memberIdsOf(data) {
       return data.get('memberIds', []);
@@ -129,10 +135,15 @@ service cloud.firestore {
         // Leader: may write ONLY `status` (CaravanMonitorService) or
         // `role` (leadership transfer promotes successor to "leader")
         // on other members' docs.
+        // getAfter clause: in the batched transfer, the old leader's
+        // demotion is evaluated pre-commit, when createdBy still points
+        // at the old leader — the post-batch createdBy is the claimer.
         allow update: if signedIn() && (
           uid() == memberId
           || (groupData(groupId).createdBy == uid()
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'role']))
+          || (groupDataAfter(groupId).createdBy == uid()
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']))
         );
 
         // Own doc (leave), or the leader (group deletion cleanup).

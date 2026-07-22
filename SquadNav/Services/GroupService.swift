@@ -169,31 +169,33 @@ class GroupService: ObservableObject {
     static let leaderStalenessThreshold: TimeInterval = 180
 
     /// Voluntary handoff: current leader promotes another member, then
-    /// typically leaves. Two writes (not atomic — acceptable: a crash
-    /// between them is covered by the involuntary-claim path).
+    /// typically leaves. All three writes commit atomically — a partial
+    /// transfer leaves two members with role "leader".
     func transferLeadership(groupId: String, newLeaderId: String) async throws {
         guard Auth.auth().currentUser?.uid != nil else {
             throw GroupError.notAuthenticated
         }
         let groupRef = db.collection("groups").document(groupId)
+        let membersRef = groupRef.collection("members")
         let oldLeaderId = try await groupRef.getDocument().data()?["createdBy"] as? String
 
-        // Role write first: rules only let the CURRENT leader write
-        // `role` on another member's doc — after the createdBy write
-        // the caller is no longer leader and would be denied.
-        try await groupRef.collection("members").document(newLeaderId)
-            .updateData(["role": "leader"])
-        try await groupRef.updateData(["createdBy": newLeaderId])
-
-        // Demote the old leader's role, or the members list shows two
-        // leaders (createdBy moved, but their role stayed "leader").
-        // After the createdBy write the new leader holds role-write
-        // permission, so this also works on the involuntary-claim path.
-        // try?: old leader's doc may already be gone (voluntary leave).
+        // A batched update on a missing doc fails the whole commit, so only
+        // include the demotion when the old leader's doc actually exists
+        // (involuntary claims fire precisely because it may be gone).
+        let oldLeaderDocExists: Bool
         if let oldLeaderId, oldLeaderId != newLeaderId {
-            try? await groupRef.collection("members").document(oldLeaderId)
-                .updateData(["role": "driver"])
+            oldLeaderDocExists = try await membersRef.document(oldLeaderId).getDocument().exists
+        } else {
+            oldLeaderDocExists = false
         }
+
+        let batch = db.batch()
+        batch.updateData(["role": "leader"], forDocument: membersRef.document(newLeaderId))
+        batch.updateData(["createdBy": newLeaderId], forDocument: groupRef)
+        if let oldLeaderId, oldLeaderId != newLeaderId, oldLeaderDocExists {
+            batch.updateData(["role": "driver"], forDocument: membersRef.document(oldLeaderId))
+        }
+        try await batch.commit()
     }
 
     /// Involuntary handoff: if the leader's member doc is missing (left
