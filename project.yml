@@ -31,6 +31,13 @@ targets:
     resources:
       - path: SquadNav/Resources/Assets.xcassets
       - path: SquadNav/Resources/GoogleService-Info.plist
+      - path: SquadNav/Resources/Fonts/Fredoka-Medium.ttf
+      - path: SquadNav/Resources/Fonts/Fredoka-SemiBold.ttf
+      - path: SquadNav/Resources/Fonts/Fredoka-Bold.ttf
+      - path: SquadNav/Resources/Fonts/Nunito-Regular.ttf
+      - path: SquadNav/Resources/Fonts/Nunito-SemiBold.ttf
+      - path: SquadNav/Resources/Fonts/Nunito-Bold.ttf
+      - path: SquadNav/Resources/Fonts/Nunito-ExtraBold.ttf
     dependencies:
       - package: Firebase
         product: FirebaseAuth
@@ -60,6 +67,14 @@ targets:
         CFBundleDisplayName: SquadNav
         CFBundleName: SquadNav
         NSSupportsLiveActivities: true
+        UIAppFonts:
+          - Fredoka-Medium.ttf
+          - Fredoka-SemiBold.ttf
+          - Fredoka-Bold.ttf
+          - Nunito-Regular.ttf
+          - Nunito-SemiBold.ttf
+          - Nunito-Bold.ttf
+          - Nunito-ExtraBold.ttf
         # Google Sign-In SDK v8 crashes without GIDClientID in Info.plist
         # (matches CLIENT_ID in GoogleService-Info.plist)
         GIDClientID: "197592495387-d3j3v3cv0r6cj77b9sq90dcer1mvkpg1.apps.googleusercontent.com"

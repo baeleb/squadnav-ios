@@ -19,8 +19,8 @@ struct CreateGroupView: View {
                     }
                     Spacer()
                     Text("New Caravan")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(AppFont.fredoka(20, .semibold))
+                        .foregroundColor(AppTheme.textPrimary)
                     Spacer()
                     Color.clear.frame(width: 28)
                 }
@@ -38,7 +38,7 @@ struct CreateGroupView: View {
             .padding(.bottom, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(AppTheme.backgroundGradient.ignoresSafeArea())
+        .background(AppTheme.backgroundDark.ignoresSafeArea())
         .presentationDetents([.height(480), .large])
         .presentationDragIndicator(.visible)
     }
@@ -47,20 +47,20 @@ struct CreateGroupView: View {
 
     private var createForm: some View {
         VStack(spacing: 24) {
-            // Car illustration
+            // Icon badge
             ZStack {
-                Circle()
-                    .fill(AppTheme.primary.opacity(0.1))
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(AppTheme.primary)
                     .frame(width: 80, height: 80)
-                    .blur(radius: 20)
+                    .shadow(color: AppTheme.primary.opacity(0.3), radius: 12, y: 6)
 
                 Image(systemName: "flag.checkered.2.crossed")
-                    .font(.system(size: 56))
-                    .foregroundStyle(AppTheme.primaryGradient)
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundColor(.white)
             }
 
             Text("Give your caravan a name")
-                .font(.system(size: 16, weight: .medium, design: .rounded))
+                .font(AppFont.nunito(15, .semibold))
                 .foregroundColor(AppTheme.textSecondary)
 
             // Group name input
@@ -72,15 +72,15 @@ struct CreateGroupView: View {
 
                 TextField("", text: $groupName, prompt: Text("e.g. Road Trip 2025")
                     .foregroundColor(AppTheme.textMuted))
-                    .font(.system(size: 17, design: .rounded))
-                    .foregroundColor(.white)
+                    .font(AppFont.nunito(16))
+                    .foregroundColor(AppTheme.textPrimary)
                     .padding()
                     .background(
-                        RoundedRectangle(cornerRadius: 14)
+                        RoundedRectangle(cornerRadius: 16)
                             .fill(AppTheme.backgroundInput)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(AppTheme.border, lineWidth: 1.5)
                             )
                     )
             }
@@ -118,12 +118,12 @@ struct CreateGroupView: View {
     private func successView(group: Group) -> some View {
         VStack(spacing: 24) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 56))
+                .font(.system(size: 52))
                 .foregroundColor(AppTheme.success)
 
             Text("Caravan Created!")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .font(AppFont.fredoka(24, .semibold))
+                .foregroundColor(AppTheme.textPrimary)
 
             InviteShareView(group: group, groupViewModel: groupViewModel)
 
@@ -131,7 +131,7 @@ struct CreateGroupView: View {
                 groupViewModel.showCreateSuccess = false
                 dismiss()
             }
-            .font(.system(size: 16, weight: .semibold, design: .rounded))
+            .font(AppFont.nunito(16, .semibold))
             .foregroundColor(AppTheme.textSecondary)
         }
     }

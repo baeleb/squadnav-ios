@@ -149,8 +149,11 @@ struct SquadNavNavigationLiveActivity: Widget {
 }
 
 // MARK: - Colors
+//
+// Flock palette, dark-teal nav variant — matches the in-app turn-by-turn
+// screen, which is always dark chrome regardless of system appearance.
 
-private let backgroundColor = Color(red: 0.08, green: 0.08, blue: 0.17) // #14142B
-private let primaryColor = Color(red: 0.43, green: 0.36, blue: 1.0) // #6E5BFF
-private let secondaryTextColor = Color(red: 0.72, green: 0.72, blue: 0.82) // #B8B8D0
-private let warningColor = Color(red: 1.0, green: 0.58, blue: 0.0) // #FF9500
+private let backgroundColor = Color(red: 0.086, green: 0.141, blue: 0.122) // #16241F
+private let primaryColor = Color(red: 0.949, green: 0.537, blue: 0.298) // #F2894C
+private let secondaryTextColor = Color(red: 0.663, green: 0.788, blue: 0.773) // #A9C9C5
+private let warningColor = Color(red: 1.0, green: 0.478, blue: 0.314) // #FF7A50

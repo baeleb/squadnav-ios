@@ -3,6 +3,7 @@ import AuthenticationServices
 
 struct SignInView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @Environment(\.colorScheme) private var colorScheme
     @State private var email = ""
     @State private var password = ""
     @State private var showSignUp = false
@@ -11,14 +12,14 @@ struct SignInView: View {
     var body: some View {
         ZStack {
             // Background
-            AppTheme.backgroundGradient
+            AppTheme.backgroundDark
                 .ignoresSafeArea()
 
-            // Animated background particles
+            // Soft ambient particles
             GeometryReader { geo in
                 ForEach(0..<15, id: \.self) { i in
                     Circle()
-                        .fill(AppTheme.primary.opacity(0.08))
+                        .fill(AppTheme.primary.opacity(0.06))
                         .frame(width: CGFloat.random(in: 30...120))
                         .position(
                             x: CGFloat.random(in: 0...geo.size.width),
@@ -36,24 +37,23 @@ struct SignInView: View {
                     // Logo
                     VStack(spacing: 12) {
                         ZStack {
-                            Circle()
-                                .fill(AppTheme.primary.opacity(0.15))
-                                .frame(width: 100, height: 100)
-                                .blur(radius: 15)
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(AppTheme.primary)
+                                .frame(width: 76, height: 76)
+                                .shadow(color: AppTheme.primary.opacity(0.35), radius: 16, y: 8)
 
-                            Image(systemName: "car.2.fill")
-                                .font(.system(size: 48))
-                                .foregroundStyle(AppTheme.primaryGradient)
+                            SquadGlyph()
+                                .frame(width: 34, height: 34)
                         }
                         .scaleEffect(animateIn ? 1.0 : 0.5)
                         .opacity(animateIn ? 1.0 : 0)
 
                         Text("SquadNav")
-                            .font(.system(size: 40, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .font(AppFont.fredoka(36, .semibold))
+                            .foregroundColor(AppTheme.textPrimary)
 
                         Text("Drive together, arrive together")
-                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                            .font(AppFont.nunito(15, .semibold))
                             .foregroundColor(AppTheme.textSecondary)
                     }
                     .offset(y: animateIn ? 0 : -20)
@@ -76,15 +76,15 @@ struct SignInView: View {
                                     .textContentType(.emailAddress)
                                     .autocapitalization(.none)
                                     .keyboardType(.emailAddress)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(AppTheme.textPrimary)
                             }
                             .padding()
                             .background(
-                                RoundedRectangle(cornerRadius: 14)
+                                RoundedRectangle(cornerRadius: 16)
                                     .fill(AppTheme.backgroundInput)
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(AppTheme.border, lineWidth: 1.5)
                                     )
                             )
                         }
@@ -103,15 +103,15 @@ struct SignInView: View {
 
                                 SecureField("", text: $password)
                                     .textContentType(.password)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(AppTheme.textPrimary)
                             }
                             .padding()
                             .background(
-                                RoundedRectangle(cornerRadius: 14)
+                                RoundedRectangle(cornerRadius: 16)
                                     .fill(AppTheme.backgroundInput)
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(AppTheme.border, lineWidth: 1.5)
                                     )
                             )
                         }
@@ -154,14 +154,14 @@ struct SignInView: View {
                     // Divider
                     HStack {
                         Rectangle()
-                            .fill(Color.white.opacity(0.15))
+                            .fill(AppTheme.border)
                             .frame(height: 1)
                         Text("or continue with")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(AppTheme.textMuted)
                             .layoutPriority(1)
                         Rectangle()
-                            .fill(Color.white.opacity(0.15))
+                            .fill(AppTheme.border)
                             .frame(height: 1)
                     }
                     .padding(.horizontal, 40)
@@ -178,17 +178,17 @@ struct SignInView: View {
                                 Image(systemName: "g.circle.fill")
                                     .font(.system(size: 22))
                                 Text("Continue with Google")
-                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .font(AppFont.nunito(16, .bold))
                             }
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.textPrimary)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 56)
+                            .frame(height: 54)
                             .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(AppTheme.backgroundElevated)
+                                RoundedRectangle(cornerRadius: 18)
+                                    .fill(AppTheme.backgroundCard)
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                        RoundedRectangle(cornerRadius: 18)
+                                            .stroke(AppTheme.border, lineWidth: 1.5)
                                     )
                             )
                         }
@@ -203,9 +203,9 @@ struct SignInView: View {
                                 await authViewModel.handleAppleSignIn(result: result)
                             }
                         }
-                        .signInWithAppleButtonStyle(.white)
-                        .frame(height: 56)
-                        .cornerRadius(16)
+                        .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                        .frame(height: 54)
+                        .cornerRadius(18)
                     }
                     .padding(.horizontal, 20)
                     .offset(y: animateIn ? 0 : 20)

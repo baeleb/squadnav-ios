@@ -71,6 +71,10 @@ struct NavigationMapView: View {
             }
         }
         .ignoresSafeArea()
+        // Turn-by-turn is an always-dark immersive surface (driving-mode
+        // glare reduction), independent of the system light/dark setting —
+        // matches the Flock design's dedicated dark nav screen.
+        .colorScheme(.dark)
         .alert("End Navigation?", isPresented: $showEndConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("End", role: .destructive) {
@@ -90,6 +94,11 @@ struct NavigationMapView: View {
                 .presentationBackgroundInteraction(.enabled(upThrough: .medium))
                 .presentationBackground(AppTheme.backgroundDark)
                 .interactiveDismissDisabled()
+                // The sheet presents outside the nav view's forced-dark
+                // hierarchy, so re-assert dark chrome here to match the
+                // immersive turn-by-turn screen (otherwise the pane falls
+                // back to the system appearance and renders light).
+                .colorScheme(.dark)
         }
     }
 
@@ -116,7 +125,7 @@ struct NavigationMapView: View {
                 .onChange(of: geo.size.width) { _, w in paneWidth = w }
             }
             .frame(height: minBarHeight)
-            .background(AppTheme.backgroundCard.opacity(0.5))
+            .background(AppTheme.backgroundCard)
             // Keep the minimized detent matched to the bar's current
             // layout (compact 64 / stacked 104): re-pin on layout change
             // and don't let a drag-down rest at the wrong height.
@@ -245,7 +254,7 @@ struct NavigationMapView: View {
 
             Divider()
                 .frame(height: 28)
-                .overlay(Color.white.opacity(0.15))
+                .overlay(AppTheme.border)
 
             paneTabButtons(showLabels: false)
         }
@@ -263,7 +272,7 @@ struct NavigationMapView: View {
             .frame(height: 50)
 
             Divider()
-                .overlay(Color.white.opacity(0.08))
+                .overlay(AppTheme.border)
 
             HStack(spacing: 0) {
                 paneTabButtons(showLabels: true)
@@ -314,7 +323,7 @@ struct NavigationMapView: View {
                 .foregroundColor(AppTheme.textMuted)
             Text(value)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(AppTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
@@ -335,7 +344,7 @@ struct NavigationMapView: View {
                     .frame(width: 6, height: 6)
                 Text("\(onRoute)/\(total)")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textPrimary)
             }
         }
         .frame(maxWidth: .infinity)
@@ -351,7 +360,7 @@ struct NavigationMapView: View {
                 .foregroundColor(AppTheme.textMuted)
             Text(value)
                 .font(.system(size: 17, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(AppTheme.textPrimary)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
@@ -371,7 +380,7 @@ struct NavigationMapView: View {
                     .frame(width: 8, height: 8)
                 Text("\(onRoute)/\(total)")
                     .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textPrimary)
             }
         }
         .frame(maxWidth: .infinity)
@@ -404,7 +413,7 @@ struct NavigationMapView: View {
                     directionalMarker(
                         name: currentUserFirstName,
                         headingDegrees: currentUserHeadingDegrees,
-                        color: Color(hex: "34C759")
+                        color: AppTheme.primary
                     )
                 }
             }
@@ -440,7 +449,6 @@ struct NavigationMapView: View {
             MapCompass()
             MapUserLocationButton()
         }
-        .colorScheme(.dark)
         // Follow the user while navigating — recenter on every location
         // tick. Gated on the full-route intro finishing (see onAppear).
         .onChange(of: navigationVM.locationService.currentLocation) { _, location in
@@ -504,8 +512,8 @@ struct NavigationMapView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(alert.memberName)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(AppFont.nunito(14, .bold))
+                        .foregroundColor(AppTheme.textPrimary)
 
                     Text(alert.status.displayLabel)
                         .font(.system(size: 12, weight: .medium))
@@ -525,7 +533,7 @@ struct NavigationMapView: View {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(AppTheme.backgroundCard.opacity(0.95))
+                    .fill(AppTheme.backgroundCard)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(Color(hex: alert.status.colorHex).opacity(0.4), lineWidth: 1)

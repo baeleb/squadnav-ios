@@ -19,7 +19,7 @@ struct SignUpView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.backgroundGradient
+            AppTheme.backgroundDark
                 .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
@@ -38,11 +38,11 @@ struct SignUpView: View {
                         }
 
                         Text("Create Account")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .font(AppFont.fredoka(28, .semibold))
+                            .foregroundColor(AppTheme.textPrimary)
 
                         Text("Join the caravan")
-                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                            .font(AppFont.nunito(15, .semibold))
                             .foregroundColor(AppTheme.textSecondary)
                     }
                     .padding(.top, 20)
@@ -177,22 +177,22 @@ struct FormField: View {
                 if isSecure {
                     SecureField("", text: $text)
                         .textContentType(contentType)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.textPrimary)
                 } else {
                     TextField("", text: $text)
                         .textContentType(contentType)
                         .keyboardType(keyboardType)
                         .autocapitalization(autocapitalization ? .words : .none)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.textPrimary)
                 }
             }
             .padding()
             .background(
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 16)
                     .fill(AppTheme.backgroundInput)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(AppTheme.border, lineWidth: 1.5)
                     )
             )
         }

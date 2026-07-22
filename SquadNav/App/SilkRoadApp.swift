@@ -13,7 +13,6 @@ struct SquadNavApp: App {
             ContentView()
                 .environmentObject(authViewModel)
                 .environmentObject(deepLinkRouter)
-                .preferredColorScheme(.dark)
                 .onOpenURL { url in
                     // With the SwiftUI scene lifecycle, the app delegate's
                     // open-URL callback is never invoked — URLs arrive here.

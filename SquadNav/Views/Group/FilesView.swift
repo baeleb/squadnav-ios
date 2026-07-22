@@ -147,7 +147,7 @@ struct FilesView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(AppTheme.backgroundCard.opacity(0.5))
+        .background(AppTheme.backgroundCard)
     }
 
     // MARK: - Files List
@@ -180,8 +180,8 @@ struct FilesView: View {
             // File info
             VStack(alignment: .leading, spacing: 3) {
                 Text(file.name)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
+                    .font(AppFont.nunito(14, .bold))
+                    .foregroundColor(AppTheme.textPrimary)
                     .lineLimit(1)
 
                 HStack(spacing: 8) {
@@ -216,12 +216,13 @@ struct FilesView: View {
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(AppTheme.backgroundCard.opacity(0.4))
+            RoundedRectangle(cornerRadius: 16)
+                .fill(AppTheme.backgroundCard)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(AppTheme.border, lineWidth: 1)
                 )
+                .shadow(color: AppTheme.shadowColor.opacity(0.06), radius: 8, x: 0, y: 2)
         )
         .contentShape(Rectangle())
         .onTapGesture {
@@ -236,15 +237,15 @@ struct FilesView: View {
             Spacer()
 
             Image(systemName: "folder.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(AppTheme.primaryGradient)
+                .font(.system(size: 44))
+                .foregroundColor(AppTheme.primary)
 
             Text("No files yet")
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
+                .font(AppFont.nunito(18, .bold))
+                .foregroundColor(AppTheme.textPrimary)
 
             Text("Upload photos, documents, or other files for your trip.")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .font(AppFont.nunito(14, .semibold))
                 .foregroundColor(AppTheme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
@@ -266,8 +267,8 @@ struct FilesView: View {
                     .scaleEffect(1.5)
 
                 Text("Uploading... \(Int(viewModel.fileService.uploadProgress * 100))%")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
+                    .font(AppFont.nunito(14, .bold))
+                    .foregroundColor(AppTheme.textPrimary)
             }
             .padding(32)
             .glassCard()

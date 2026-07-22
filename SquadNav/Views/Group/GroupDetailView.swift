@@ -37,7 +37,7 @@ struct GroupDetailView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.backgroundGradient
+            AppTheme.backgroundDark
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -55,8 +55,8 @@ struct GroupDetailView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(group.name)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
+                    .font(AppFont.nunito(17, .bold))
+                    .foregroundColor(AppTheme.textPrimary)
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -128,11 +128,11 @@ struct GroupDetailView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .sheet(isPresented: $showInviteSheet) {
             ZStack {
-                AppTheme.backgroundGradient.ignoresSafeArea()
+                AppTheme.backgroundDark.ignoresSafeArea()
                 VStack(spacing: 20) {
                     Text("Invite Drivers")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(AppFont.fredoka(20, .semibold))
+                        .foregroundColor(AppTheme.textPrimary)
                         .padding(.top, 24)
                     InviteShareView(group: group, groupViewModel: groupViewModel)
                     Spacer()
@@ -240,7 +240,7 @@ struct GroupDetailView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(AppTheme.primaryGradient))
+                    .background(Capsule().fill(AppTheme.primary))
                 }
             }
         }
@@ -263,7 +263,7 @@ struct GroupDetailView: View {
                             .font(.system(size: 18))
 
                         Text(tab.rawValue)
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .font(AppFont.nunito(11, .bold))
                     }
                     .foregroundColor(selectedTab == tab ? AppTheme.primary : AppTheme.textMuted)
                     .frame(maxWidth: .infinity)
@@ -272,7 +272,7 @@ struct GroupDetailView: View {
                         selectedTab == tab ?
                             AnyView(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .fill(AppTheme.primary.opacity(0.1))
+                                    .fill(AppTheme.primary.opacity(0.12))
                             )
                         : AnyView(Color.clear)
                     )
@@ -281,7 +281,7 @@ struct GroupDetailView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
-        .background(AppTheme.backgroundCard.opacity(0.5))
+        .background(AppTheme.backgroundCard)
     }
 
     // MARK: - Tab Content
@@ -402,7 +402,7 @@ struct GroupMapPreview: View {
                         directionalMarker(
                             name: currentUserFirstName,
                             headingDegrees: currentUserHeadingDegrees,
-                            color: Color(hex: "34C759")
+                            color: AppTheme.primary
                         )
                     }
                 }
@@ -445,7 +445,6 @@ struct GroupMapPreview: View {
                 MapCompass()
                 MapUserLocationButton()
             }
-            .colorScheme(.dark)
             // Fly the camera to the destination when it gets set (search
             // pick on this device, or set from another device) and on
             // appear if one already exists.
@@ -481,8 +480,8 @@ struct GroupMapPreview: View {
                         Image(systemName: "mappin.circle.fill")
                             .foregroundColor(AppTheme.accent)
                         Text(destName)
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white)
+                            .font(AppFont.nunito(14, .bold))
+                            .foregroundColor(AppTheme.textPrimary)
                         Spacer()
 
                         // Leader can clear the destination for everyone
@@ -498,8 +497,9 @@ struct GroupMapPreview: View {
                     }
                     .padding(14)
                     .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(AppTheme.backgroundCard.opacity(0.9))
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(AppTheme.backgroundCard)
+                            .shadow(color: AppTheme.shadowColor.opacity(0.1), radius: 10, x: 0, y: 4)
                     )
                     .padding()
                 }
@@ -533,8 +533,8 @@ struct GroupMapPreview: View {
                 .foregroundColor(AppTheme.textMuted)
 
             TextField("Search destination...", text: $searchText)
-                .font(.system(size: 15, design: .rounded))
-                .foregroundColor(.white)
+                .font(AppFont.nunito(15))
+                .foregroundColor(AppTheme.textPrimary)
                 .autocorrectionDisabled()
 
             if !searchText.isEmpty {
@@ -555,12 +555,13 @@ struct GroupMapPreview: View {
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(AppTheme.backgroundCard.opacity(0.95))
+            RoundedRectangle(cornerRadius: 16)
+                .fill(AppTheme.backgroundCard)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(AppTheme.border, lineWidth: 1)
                 )
+                .shadow(color: AppTheme.shadowColor.opacity(0.1), radius: 10, x: 0, y: 4)
         )
         .padding(.horizontal, 16)
         .padding(.top, 12)
@@ -592,8 +593,8 @@ struct GroupMapPreview: View {
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(mapItem.name ?? "Unknown")
-                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                    .foregroundColor(.white)
+                                    .font(AppFont.nunito(14, .bold))
+                                    .foregroundColor(AppTheme.textPrimary)
                                 if let address = mapItem.placemark.formattedAddress {
                                     Text(address)
                                         .font(.system(size: 11, weight: .medium))
@@ -613,8 +614,9 @@ struct GroupMapPreview: View {
         }
         .frame(maxHeight: 260)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(AppTheme.backgroundCard.opacity(0.95))
+            RoundedRectangle(cornerRadius: 16)
+                .fill(AppTheme.backgroundCard)
+                .shadow(color: AppTheme.shadowColor.opacity(0.1), radius: 10, x: 0, y: 4)
         )
         .padding(.horizontal, 16)
         .padding(.top, 6)
