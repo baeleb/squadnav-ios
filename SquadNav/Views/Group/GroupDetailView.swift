@@ -319,6 +319,8 @@ struct GroupMapPreview: View {
     @State private var searchText = ""
     @State private var searchDebounceTask: Task<Void, Never>?
     @State private var cameraPosition: MapCameraPosition = .automatic
+    // Last-known heading; course/heading are nil in simulator when idle.
+    @State private var displayedHeading: Double = 0
 
     // Members who have never uploaded a location sit at the default (0,0) —
     // Gulf of Guinea — and drag the camera into the ocean. (lastUpdated can't
@@ -339,10 +341,7 @@ struct GroupMapPreview: View {
 
     /// Degrees clockwise from north; course when moving, compass otherwise.
     private var currentUserHeadingDegrees: Double {
-        if let course = navigationVM.locationService.currentLocation?.course, course >= 0 {
-            return course
-        }
-        return navigationVM.locationService.heading?.trueHeading ?? 0
+        displayedHeading
     }
 
     /// Navigation-style triangle pointing in the travel direction with the
@@ -449,6 +448,16 @@ struct GroupMapPreview: View {
                 flyToDestination()
             }
             .onAppear { flyToDestination() }
+            .onChange(of: navigationVM.locationService.currentLocation) { _, location in
+                if let course = location?.course, course >= 0 {
+                    displayedHeading = course
+                }
+            }
+            .onChange(of: navigationVM.locationService.heading) { _, heading in
+                if let h = heading?.trueHeading, displayedHeading == 0 {
+                    displayedHeading = h
+                }
+            }
 
             // Overlay: leader destination search (replaces the old
             // ellipsis-menu DestinationSearchView sheet)

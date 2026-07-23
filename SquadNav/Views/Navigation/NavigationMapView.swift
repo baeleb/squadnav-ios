@@ -16,6 +16,8 @@ struct NavigationMapView: View {
     @State private var paneWidth: CGFloat = 390
     // Camera follows the user only after the brief full-route intro.
     @State private var followUser = false
+    // Last-known heading; course/heading are nil in simulator when idle.
+    @State private var displayedHeading: Double = 0
 
     enum CaravanPaneTab: String, CaseIterable {
         case chat = "Chat"
@@ -173,10 +175,7 @@ struct NavigationMapView: View {
     /// right signal while driving; compass heading is the fallback when
     /// course is invalid (-1), e.g. standing still.
     private var currentUserHeadingDegrees: Double {
-        if let course = navigationVM.locationService.currentLocation?.course, course >= 0 {
-            return course
-        }
-        return navigationVM.locationService.heading?.trueHeading ?? 0
+        displayedHeading
     }
 
     /// Navigation-style triangle pointing in the travel direction with the
@@ -453,6 +452,16 @@ struct NavigationMapView: View {
                     latitudinalMeters: 1200,
                     longitudinalMeters: 1200
                 ))
+            }
+        }
+        .onChange(of: navigationVM.locationService.currentLocation) { _, location in
+            if let course = location?.course, course >= 0 {
+                displayedHeading = course
+            }
+        }
+        .onChange(of: navigationVM.locationService.heading) { _, heading in
+            if let h = heading?.trueHeading, displayedHeading == 0 {
+                displayedHeading = h
             }
         }
         .onAppear {
