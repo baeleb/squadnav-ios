@@ -130,10 +130,6 @@ struct GroupDetailView: View {
             ZStack {
                 AppTheme.backgroundDark.ignoresSafeArea()
                 VStack(spacing: 20) {
-                    Text("Invite Drivers")
-                        .font(AppFont.fredoka(20, .semibold))
-                        .foregroundColor(AppTheme.textPrimary)
-                        .padding(.top, 24)
                     InviteShareView(group: group, groupViewModel: groupViewModel)
                     Spacer()
                 }
