@@ -397,10 +397,13 @@ struct GroupMapPreview: View {
                 // Current user — UserAnnotation suppresses the default
                 // blue dot that Annotation("", coordinate:) doesn't.
                 UserAnnotation { userLocation in
+                    let heading = userLocation.heading?.trueHeading ?? displayedHeading
+                    let mapHeading = cameraPosition.camera?.heading ?? 0
+                    let adjusted = (heading + mapHeading).truncatingRemainder(dividingBy: 360)
                     directionalMarker(
                         name: currentUserFirstName,
                         color: AppTheme.primary,
-                        heading: userLocation.heading?.trueHeading ?? displayedHeading
+                        heading: adjusted
                     )
                 }
 

@@ -407,10 +407,13 @@ struct NavigationMapView: View {
             // Annotation("", coordinate:) skips. Driven by course
             // (direction of travel), falling back to compass.
             UserAnnotation { userLocation in
+                let heading = userLocation.heading?.trueHeading ?? displayedHeading
+                let mapHeading = mapCameraPosition.camera?.heading ?? 0
+                let adjusted = (heading + mapHeading).truncatingRemainder(dividingBy: 360)
                 directionalMarker(
                     name: currentUserFirstName,
                     color: AppTheme.primary,
-                    heading: userLocation.heading?.trueHeading ?? displayedHeading
+                    heading: adjusted
                 )
             }
 
