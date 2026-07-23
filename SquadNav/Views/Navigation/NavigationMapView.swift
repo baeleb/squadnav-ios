@@ -181,11 +181,12 @@ struct NavigationMapView: View {
     /// Navigation-style triangle pointing in the travel direction with the
     /// driver's first name underneath. "location.north.fill" points up at
     /// 0°, and rotation is clockwise-positive — matching compass degrees.
-    private func directionalMarker(name: String, color: Color) -> some View {
+    private func directionalMarker(name: String, color: Color, heading: Double) -> some View {
         ZStack(alignment: .bottom) {
             Image(systemName: "location.north.fill")
                 .font(.system(size: 24))
                 .foregroundColor(color)
+                .rotationEffect(Angle(degrees: heading))
                 .shadow(color: color.opacity(0.6), radius: 5)
 
             Text(name)
@@ -408,9 +409,9 @@ struct NavigationMapView: View {
             UserAnnotation { userLocation in
                 directionalMarker(
                     name: currentUserFirstName,
-                    color: AppTheme.primary
+                    color: AppTheme.primary,
+                    heading: userLocation.heading?.trueHeading ?? displayedHeading
                 )
-                .rotationEffect(Angle(degrees: userLocation.heading?.trueHeading ?? displayedHeading))
             }
 
             // Other caravan members — compact initials circle, no

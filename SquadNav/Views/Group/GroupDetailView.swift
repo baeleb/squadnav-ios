@@ -346,11 +346,12 @@ struct GroupMapPreview: View {
 
     /// Navigation-style triangle pointing in the travel direction with the
     /// driver's first name underneath (matches NavigationMapView's style).
-    private func directionalMarker(name: String, color: Color) -> some View {
+    private func directionalMarker(name: String, color: Color, heading: Double) -> some View {
         ZStack(alignment: .bottom) {
             Image(systemName: "location.north.fill")
                 .font(.system(size: 24))
                 .foregroundColor(color)
+                .rotationEffect(Angle(degrees: heading))
                 .shadow(color: color.opacity(0.6), radius: 5)
 
             Text(name)
@@ -397,9 +398,9 @@ struct GroupMapPreview: View {
                 UserAnnotation { userLocation in
                     directionalMarker(
                         name: currentUserFirstName,
-                        color: AppTheme.primary
+                        color: AppTheme.primary,
+                        heading: userLocation.heading?.trueHeading ?? displayedHeading
                     )
-                    .rotationEffect(Angle(degrees: userLocation.heading?.trueHeading ?? displayedHeading))
                 }
 
                 // Show member annotations
