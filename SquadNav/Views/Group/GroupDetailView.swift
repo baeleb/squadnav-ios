@@ -321,7 +321,7 @@ struct GroupMapPreview: View {
     @State private var cameraPosition: MapCameraPosition = .automatic
     // Last-known heading; course/heading are nil in simulator when idle.
     @State private var displayedHeading: Double = 0
-    @State private var isTrackingUser = false
+    @State private var isTrackingUser = true
 
     // Members who have never uploaded a location sit at the default (0,0) —
     // Gulf of Guinea — and drag the camera into the ocean. (lastUpdated can't
