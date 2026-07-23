@@ -447,7 +447,6 @@ struct NavigationMapView: View {
         .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
         .mapControls {
             MapCompass()
-            MapUserLocationButton()
         }
         // Follow the user while navigating — recenter on every location
         // tick. Gated on the full-route intro finishing (see onAppear).

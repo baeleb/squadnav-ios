@@ -318,7 +318,7 @@ struct GroupMapPreview: View {
     @ObservedObject var groupViewModel: GroupViewModel
     @State private var searchText = ""
     @State private var searchDebounceTask: Task<Void, Never>?
-    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
+    @State private var cameraPosition: MapCameraPosition = .automatic
 
     // Members who have never uploaded a location sit at the default (0,0) —
     // Gulf of Guinea — and drag the camera into the ocean. (lastUpdated can't
@@ -443,7 +443,6 @@ struct GroupMapPreview: View {
             .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
             .mapControls {
                 MapCompass()
-                MapUserLocationButton()
             }
             // Fly the camera to the destination when it gets set (search
             // pick on this device, or set from another device) and on
