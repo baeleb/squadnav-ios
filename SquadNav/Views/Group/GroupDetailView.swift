@@ -321,6 +321,7 @@ struct GroupMapPreview: View {
     @State private var cameraPosition: MapCameraPosition = .automatic
     // Last-known heading; course/heading are nil in simulator when idle.
     @State private var displayedHeading: Double = 0
+    @State private var isTrackingUser = false
 
     // Members who have never uploaded a location sit at the default (0,0) —
     // Gulf of Guinea — and drag the camera into the ocean. (lastUpdated can't
@@ -440,20 +441,6 @@ struct GroupMapPreview: View {
             .mapControls {
                 MapCompass()
             }
-            .overlay(alignment: .topTrailing) {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        cameraPosition = .userLocation(fallback: .automatic)
-                    }
-                } label: {
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(AppTheme.primary)
-                        .frame(width: 36, height: 36)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .padding(12)
-            }
             // Fly the camera to the destination when it gets set (search
             // pick on this device, or set from another device) and on
             // appear if one already exists.
@@ -474,6 +461,11 @@ struct GroupMapPreview: View {
                     displayedHeading = h
                 }
             }
+            .onChange(of: cameraPosition) { _, newValue in
+                if isTrackingUser, newValue != .userLocation(fallback: .automatic) {
+                    isTrackingUser = false
+                }
+            }
 
             // Overlay: leader destination search (replaces the old
             // ellipsis-menu DestinationSearchView sheet)
@@ -484,6 +476,24 @@ struct GroupMapPreview: View {
                     if !searchText.isEmpty && !navigationVM.searchResults.isEmpty {
                         destinationSearchResults
                     }
+                }
+
+                HStack {
+                    Spacer()
+                    Button {
+                        isTrackingUser = true
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            cameraPosition = .userLocation(fallback: .automatic)
+                        }
+                    } label: {
+                        Image(systemName: isTrackingUser ? "location.fill" : "location")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(isTrackingUser ? AppTheme.primary : AppTheme.textSecondary)
+                            .frame(width: 36, height: 36)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .padding(.trailing, 12)
+                    .padding(.top, 8)
                 }
 
                 Spacer()
