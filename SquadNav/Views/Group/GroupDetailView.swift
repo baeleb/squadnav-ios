@@ -135,7 +135,8 @@ struct GroupDetailView: View {
                 }
                 .padding(.horizontal, 20)
             }
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.height(460)])
+            .presentationDragIndicator(.hidden)
         }
         .fullScreenCover(isPresented: $navigationVM.showNavigation) {
             NavigationMapView(navigationVM: navigationVM, groupViewModel: groupViewModel)
