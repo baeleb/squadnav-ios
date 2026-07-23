@@ -404,18 +404,15 @@ struct NavigationMapView: View {
             }
 
             // Current user — live directional triangle (replaces the
-            // native UserAnnotation dot + full-name label). Driven by
-            // course (direction of travel), falling back to compass.
-            // Title is "": a non-empty title renders a duplicate
-            // plain-text label alongside our capsule.
-            if let location = navigationVM.locationService.currentLocation {
-                Annotation("", coordinate: location.coordinate) {
-                    directionalMarker(
-                        name: currentUserFirstName,
-                        headingDegrees: currentUserHeadingDegrees,
-                        color: AppTheme.primary
-                    )
-                }
+            // UserAnnotation suppresses the default blue dot that
+            // Annotation("", coordinate:) skips. Driven by course
+            // (direction of travel), falling back to compass.
+            UserAnnotation {
+                directionalMarker(
+                    name: currentUserFirstName,
+                    headingDegrees: currentUserHeadingDegrees,
+                    color: AppTheme.primary
+                )
             }
 
             // Other caravan members — compact initials circle, no

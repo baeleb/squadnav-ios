@@ -33,8 +33,9 @@ struct MessageBubbleView: View {
                 Text(message.text)
                     .font(AppFont.nunito(15))
                     .foregroundColor(isCurrentUser ? .white : AppTheme.textPrimary)
-                    .padding(.horizontal, 14)
                     .padding(.vertical, 10)
+                    .padding(.leading, isCurrentUser ? 14 : 20)
+                    .padding(.trailing, isCurrentUser ? 20 : 14)
                     .background(
                         BubbleShape(isCurrentUser: isCurrentUser)
                             .fill(isCurrentUser ? AnyShapeStyle(AppTheme.primary) : AnyShapeStyle(AppTheme.backgroundCard))

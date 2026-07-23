@@ -130,16 +130,14 @@ struct GroupDetailView: View {
             ZStack {
                 AppTheme.backgroundDark.ignoresSafeArea()
                 VStack(spacing: 20) {
-                    Text("Invite Drivers")
-                        .font(AppFont.fredoka(20, .semibold))
-                        .foregroundColor(AppTheme.textPrimary)
-                        .padding(.top, 24)
+                    Spacer()
                     InviteShareView(group: group, groupViewModel: groupViewModel)
                     Spacer()
                 }
                 .padding(.horizontal, 20)
             }
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.height(460)])
+            .presentationDragIndicator(.hidden)
         }
         .fullScreenCover(isPresented: $navigationVM.showNavigation) {
             NavigationMapView(navigationVM: navigationVM, groupViewModel: groupViewModel)
@@ -394,17 +392,14 @@ struct GroupMapPreview: View {
                         )
                 }
 
-                // Current user — live directional triangle (same style as
-                // the navigation view; replaces the native UserAnnotation
-                // dot that duplicated the member pin)
-                if let location = navigationVM.locationService.currentLocation {
-                    Annotation("", coordinate: location.coordinate) {
-                        directionalMarker(
-                            name: currentUserFirstName,
-                            headingDegrees: currentUserHeadingDegrees,
-                            color: AppTheme.primary
-                        )
-                    }
+                // Current user — UserAnnotation suppresses the default
+                // blue dot that Annotation("", coordinate:) doesn't.
+                UserAnnotation {
+                    directionalMarker(
+                        name: currentUserFirstName,
+                        headingDegrees: currentUserHeadingDegrees,
+                        color: AppTheme.primary
+                    )
                 }
 
                 // Show member annotations
