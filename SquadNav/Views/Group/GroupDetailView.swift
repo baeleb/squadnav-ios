@@ -130,6 +130,7 @@ struct GroupDetailView: View {
             ZStack {
                 AppTheme.backgroundDark.ignoresSafeArea()
                 VStack(spacing: 20) {
+                    Spacer()
                     InviteShareView(group: group, groupViewModel: groupViewModel)
                     Spacer()
                 }
