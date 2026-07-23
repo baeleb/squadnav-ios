@@ -322,6 +322,7 @@ struct GroupMapPreview: View {
     // Last-known heading; course/heading are nil in simulator when idle.
     @State private var displayedHeading: Double = 0
     @State private var isTrackingUser = true
+    @State private var mapHeading: Double = 0
 
     // Members who have never uploaded a location sit at the default (0,0) —
     // Gulf of Guinea — and drag the camera into the ocean. (lastUpdated can't
@@ -398,7 +399,6 @@ struct GroupMapPreview: View {
                 // blue dot that Annotation("", coordinate:) doesn't.
                 UserAnnotation { userLocation in
                     let heading = userLocation.heading?.trueHeading ?? displayedHeading
-                    let mapHeading = cameraPosition.camera?.heading ?? 0
                     let adjusted = (heading + mapHeading).truncatingRemainder(dividingBy: 360)
                     directionalMarker(
                         name: currentUserFirstName,
@@ -468,6 +468,9 @@ struct GroupMapPreview: View {
                 if isTrackingUser, newValue != .userLocation(fallback: .automatic) {
                     isTrackingUser = false
                 }
+            }
+            .onMapCameraChange(frequency: .continuous) { context in
+                mapHeading = context.camera.heading
             }
 
             // Overlay: leader destination search (replaces the old

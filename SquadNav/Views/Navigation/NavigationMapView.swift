@@ -18,6 +18,8 @@ struct NavigationMapView: View {
     @State private var followUser = false
     // Last-known heading; course/heading are nil in simulator when idle.
     @State private var displayedHeading: Double = 0
+    // Current map camera heading from onMapCameraChange.
+    @State private var mapHeading: Double = 0
 
     enum CaravanPaneTab: String, CaseIterable {
         case chat = "Chat"
@@ -408,7 +410,6 @@ struct NavigationMapView: View {
             // (direction of travel), falling back to compass.
             UserAnnotation { userLocation in
                 let heading = userLocation.heading?.trueHeading ?? displayedHeading
-                let mapHeading = mapCameraPosition.camera?.heading ?? 0
                 let adjusted = (heading + mapHeading).truncatingRemainder(dividingBy: 360)
                 directionalMarker(
                     name: currentUserFirstName,
@@ -468,6 +469,9 @@ struct NavigationMapView: View {
             if let h = heading?.trueHeading, displayedHeading == 0 {
                 displayedHeading = h
             }
+        }
+        .onMapCameraChange(frequency: .continuous) { context in
+            mapHeading = context.camera.heading
         }
         .onAppear {
             // Intro: frame the entire route for 3s, then zoom into the
