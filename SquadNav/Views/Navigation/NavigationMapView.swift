@@ -183,7 +183,7 @@ struct NavigationMapView: View {
     /// driver's first name underneath. "location.north.fill" points up at
     /// 0°, and rotation is clockwise-positive — matching compass degrees.
     private func directionalMarker(name: String, headingDegrees: Double, color: Color) -> some View {
-        VStack(spacing: 2) {
+        ZStack(alignment: .bottom) {
             Image(systemName: "location.north.fill")
                 .font(.system(size: 24))
                 .foregroundColor(color)
@@ -196,6 +196,7 @@ struct NavigationMapView: View {
                 .padding(.horizontal, 5)
                 .padding(.vertical, 2)
                 .background(Capsule().fill(Color.black.opacity(0.7)))
+                .offset(y: 18)
         }
     }
 
@@ -446,7 +447,6 @@ struct NavigationMapView: View {
         .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
         .mapControls {
             MapCompass()
-            MapUserLocationButton()
         }
         // Follow the user while navigating — recenter on every location
         // tick. Gated on the full-route intro finishing (see onAppear).

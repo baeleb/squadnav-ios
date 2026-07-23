@@ -29,7 +29,7 @@ struct JoinGroupView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 18)
                         .fill(AppTheme.accent)
-                        .frame(width: 64, height: 64)
+                        .frame(width: 80, height: 80)
                         .shadow(color: AppTheme.accent.opacity(0.3), radius: 12, y: 6)
 
                     Image(systemName: "person.badge.plus")

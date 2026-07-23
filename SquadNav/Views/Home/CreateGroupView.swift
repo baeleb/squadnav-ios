@@ -51,7 +51,7 @@ struct CreateGroupView: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 18)
                     .fill(AppTheme.primary)
-                    .frame(width: 64, height: 64)
+                    .frame(width: 80, height: 80)
                     .shadow(color: AppTheme.primary.opacity(0.3), radius: 12, y: 6)
 
                 Image(systemName: "flag.checkered.2.crossed")
