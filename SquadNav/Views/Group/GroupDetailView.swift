@@ -394,11 +394,12 @@ struct GroupMapPreview: View {
 
                 // Current user — UserAnnotation suppresses the default
                 // blue dot that Annotation("", coordinate:) doesn't.
-                UserAnnotation {
+                UserAnnotation { userLocation in
                     directionalMarker(
                         name: currentUserFirstName,
                         color: AppTheme.primary
                     )
+                    .rotationEffect(Angle(degrees: userLocation.heading?.trueHeading ?? displayedHeading))
                 }
 
                 // Show member annotations

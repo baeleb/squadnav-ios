@@ -405,11 +405,12 @@ struct NavigationMapView: View {
             // UserAnnotation suppresses the default blue dot that
             // Annotation("", coordinate:) skips. Driven by course
             // (direction of travel), falling back to compass.
-            UserAnnotation {
+            UserAnnotation { userLocation in
                 directionalMarker(
                     name: currentUserFirstName,
                     color: AppTheme.primary
                 )
+                .rotationEffect(Angle(degrees: userLocation.heading?.trueHeading ?? displayedHeading))
             }
 
             // Other caravan members — compact initials circle, no
