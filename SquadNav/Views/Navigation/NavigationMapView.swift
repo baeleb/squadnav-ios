@@ -449,11 +449,13 @@ struct NavigationMapView: View {
         // tick. Gated on the full-route intro finishing (see onAppear).
         .onChange(of: navigationVM.locationService.currentLocation) { _, location in
             guard followUser, let location else { return }
-            mapCameraPosition = .region(MKCoordinateRegion(
-                center: location.coordinate,
-                latitudinalMeters: 1200,
-                longitudinalMeters: 1200
-            ))
+            withAnimation(.linear(duration: 1.0)) {
+                mapCameraPosition = .region(MKCoordinateRegion(
+                    center: location.coordinate,
+                    latitudinalMeters: 1200,
+                    longitudinalMeters: 1200
+                ))
+            }
         }
         .onAppear {
             // Intro: frame the entire route for 3s, then zoom into the
