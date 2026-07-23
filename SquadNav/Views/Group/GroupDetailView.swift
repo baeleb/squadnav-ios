@@ -145,8 +145,10 @@ struct GroupDetailView: View {
         .onAppear {
             groupViewModel.selectGroup(group)
             navigationVM.requestLocationPermission()
+            navigationVM.locationService.startTracking()
         }
         .onDisappear {
+            navigationVM.locationService.stopTracking()
             groupViewModel.deselectGroup()
         }
         .onChange(of: groupViewModel.groupService.activeGroup?.isNavigating) { _, isNavigating in

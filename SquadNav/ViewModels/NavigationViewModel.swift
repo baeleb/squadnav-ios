@@ -241,7 +241,6 @@ class NavigationViewModel: ObservableObject {
     }
 
     func stopNavigation() async {
-        locationService.stopTracking()
         navigationService.stopNavigation()
         showNavigation = false
         stopCaravanMonitoring()
@@ -304,7 +303,6 @@ class NavigationViewModel: ObservableObject {
 
     /// Tears down navigation locally when the leader ends it for the group.
     func endNavigationLocally() {
-        locationService.stopTracking()
         navigationService.stopNavigation()
         stopCaravanMonitoring()
         showNavigation = false
