@@ -440,6 +440,20 @@ struct GroupMapPreview: View {
             .mapControls {
                 MapCompass()
             }
+            .overlay(alignment: .topTrailing) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        cameraPosition = .userLocation(fallback: .automatic)
+                    }
+                } label: {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(AppTheme.primary)
+                        .frame(width: 36, height: 36)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .padding(12)
+            }
             // Fly the camera to the destination when it gets set (search
             // pick on this device, or set from another device) and on
             // appear if one already exists.
