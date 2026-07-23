@@ -471,7 +471,9 @@ struct NavigationMapView: View {
             }
         }
         .onMapCameraChange(frequency: .continuous) { context in
-            mapHeading = context.camera.heading
+            withTransaction(Transaction(animation: nil)) {
+                mapHeading = context.camera.heading
+            }
         }
         .onAppear {
             // Intro: frame the entire route for 3s, then zoom into the

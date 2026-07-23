@@ -470,7 +470,9 @@ struct GroupMapPreview: View {
                 }
             }
             .onMapCameraChange(frequency: .continuous) { context in
-                mapHeading = context.camera.heading
+                withTransaction(Transaction(animation: nil)) {
+                    mapHeading = context.camera.heading
+                }
             }
 
             // Overlay: leader destination search (replaces the old
